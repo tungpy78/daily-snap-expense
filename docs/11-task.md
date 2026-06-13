@@ -14,7 +14,7 @@
     *   **Module ảnh hưởng**: Backend root
     *   **Test**: Run build TypeScript không có lỗi.
     *   **Dependency**: T-1.1
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-1.3**: Thiết lập Linter & Formatter cho Backend
     *   **Mục tiêu**: Đảm bảo chất lượng và định dạng code đồng nhất.
     *   **Mô tả**: Cấu hình ESLint và Prettier theo chuẩn dự án.

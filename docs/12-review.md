@@ -159,7 +159,74 @@ Mô tả ngắn task đã làm.
 - Files: `docs/11-task.md`, `docs/12-review.md`
 
 ### Decision
-- Approved (Cả cấu hình `.gitignore` và khởi tạo Git repository đều đã hoàn thành thành công).
+- Approved (Cấu hình `.gitignore`, khởi tạo Git, thực hiện initial commit và push lên GitHub hoàn tất).
 
 ### Notes
-- Git repository đã hoạt động bình thường, đang ở nhánh `master` và sẵn sàng track `.gitignore`, `AGENTS.md` và thư mục `docs/`.
+- Đã thực hiện initial commit thành công với message: `"docs: initialize project context and rules"`.
+- Đổi tên nhánh mặc định từ `master` sang `main`.
+- Đã thiết lập remote `origin` tới GitHub: `https://github.com/tungpy78/daily-snap-expense.git`.
+- Thực hiện push thành công toàn bộ tài liệu dự án ban đầu (baseline docs) lên nhánh `main` của GitHub. Dòng code đã được đồng bộ lên remote repository.
+
+---
+
+## Review: T-1.2 - Cấu hình dự án Backend Node.js Express TypeScript
+
+### Date
+2026-06-14
+
+### Summary
+Khởi tạo cấu trúc dự án backend nền tảng trong thư mục `backend/` gồm các file cấu hình `package.json`, `tsconfig.json`, `.env.example`, mã nguồn khởi động server Express cơ bản (`src/app.ts`, `src/server.ts`) và các thư mục phân tầng Layered Architecture trống có file `.gitkeep`.
+
+### Files Changed
+- `backend/package.json` (Tạo mới)
+- `backend/tsconfig.json` (Tạo mới)
+- `backend/.env.example` (Tạo mới)
+- `backend/src/app.ts` (Tạo mới)
+- `backend/src/server.ts` (Tạo mới)
+- `backend/src/config/.gitkeep` (Tạo mới)
+- `backend/src/middlewares/.gitkeep` (Tạo mới)
+- `backend/src/modules/.gitkeep` (Tạo mới)
+- `backend/src/shared/.gitkeep` (Tạo mới)
+
+### What Went Well
+- Khởi dựng thành công cấu trúc thư mục backend chuẩn phân lớp.
+- Cấu hình biên dịch TypeScript tối ưu với `outDir: dist` và `rootDir: src`.
+- Tích hợp các middleware bảo mật cơ bản như `helmet`, `cors` và endpoint kiểm tra sức khỏe hệ thống `/api/health`.
+- Định hình sẵn global error handler middleware để chuẩn hóa phản hồi lỗi.
+- Bổ sung trình xử lý lỗi lắng nghe cổng mạng (`EADDRINUSE`) giúp hiển thị thông báo lỗi tường minh khi port bị chiếm dụng.
+
+### Issues Found
+- Cảnh báo phân giải module: Phát hiện việc thiếu package `ts-node` trực tiếp trong `devDependencies` có thể khiến một số môi trường chạy `ts-node-dev` bị lỗi không khởi chạy được. Đã khắc phục bằng cách bổ sung `"ts-node": "^10.9.2"` vào `package.json`.
+- Cấu hình `tsconfig.json` có thuộc tính `paths` dư thừa gây ra lỗi/cảnh báo phân giải module khi không cấu hình kèm `tsconfig-paths`. Đã tiến hành xóa bỏ phần `paths` mapping này.
+
+### Security Review
+- Authentication: N/A (Sẽ triển khai ở Milestone 3).
+- Authorization: N/A.
+- Data validation: N/A.
+- Sensitive data: File nhạy cảm `.env` đã được bỏ qua thông qua cấu hình `.gitignore` của task T-1.1, chỉ sử dụng `.env.example` để làm mẫu cấu hình.
+
+### Performance Review
+- Query: N/A.
+- Pagination: N/A.
+- File handling: Sử dụng middleware `express.static('public')` làm tiền đề cho việc upload ảnh local.
+
+### Test Review
+- Unit tests: N/A.
+- Integration tests: N/A.
+- Negative tests: Kiểm thử biên lỗi cổng mạng (`EADDRINUSE`) thành công. Khi chạy cổng `5000` bị trùng, hệ thống đã ném lỗi và xuất log chỉ dẫn đổi cổng rõ ràng, thoát tiến trình an toàn với mã lỗi 1.
+- Kiểm thử thực tế trên máy thật:
+  - Khởi chạy dev server (`npm run dev`) thành công trên cổng `5001` sau khi đổi file `.env`.
+  - Endpoint `http://localhost:5001/api/health` trả về kết quả JSON chính xác.
+  - Lệnh build (`npm run build`) chạy biên dịch sang TypeScript sạch sẽ mà không gặp bất kỳ lỗi biên dịch nào.
+  - Sự kiện dừng server bằng `Ctrl+C` (SIGINT) kích hoạt cơ chế tắt ứng dụng an toàn (graceful shutdown) thành công.
+
+### Documentation Updated
+- Yes
+- Files: `docs/11-task.md`, `docs/12-review.md`
+
+### Decision
+- Approved (Đã kiểm thử tích hợp và kiểm thử biên thành công trên máy thật của người dùng).
+
+### Notes
+- Cấu hình server cơ bản và xử lý lỗi khởi động đã được nghiệm thu thực tế.
+- Các task tiếp theo có thể tự tin sử dụng khung gầm backend này.
