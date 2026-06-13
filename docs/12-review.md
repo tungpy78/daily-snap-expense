@@ -332,3 +332,65 @@ Cập nhật và chuẩn hóa file mẫu cấu hình biến môi trường `back
 
 ### Notes
 - Người dùng cần cập nhật lại tệp `.env` trên máy thật bằng cách đồng bộ theo `.env.example` mới để chuẩn bị cho giai đoạn kết nối cơ sở dữ liệu và xác thực ở các Milestones tiếp theo.
+- `CORS_ORIGIN=*` chỉ phù hợp cho môi trường development/MVP. Khi lên production, cần thay `CORS_ORIGIN` bằng domain hoặc origin cụ thể.
+- `CLIENT_URL=http://localhost:19006` phù hợp cho Expo Web/local, nhưng khi test trên thiết bị thật có thể cần đổi thành IP LAN của máy backend.
+
+---
+
+## Review: T-2.1 - Tích hợp Sequelize CLI và cấu hình kết nối Database
+
+### Date
+2026-06-14
+
+### Summary
+Tích hợp Sequelize ORM và cấu hình kết nối database MySQL dựa trên các biến môi trường cấu hình tại `.env`, đồng thời thiết lập cấu trúc cho migrations/seeders/models trong thư mục `backend/src`.
+
+### Files Changed
+- `backend/package.json` (Chỉnh sửa: Thêm `sequelize`, `mysql2`, `sequelize-cli`)
+- `backend/.sequelizerc` (Tạo mới: Cấu hình đường dẫn Sequelize CLI)
+- `backend/src/config/database.js` (Tạo mới: Cấu hình DB cho Sequelize CLI)
+- `backend/src/shared/database/index.ts` (Tạo mới: Khởi tạo Sequelize instance và cấu hình `snake_case` mapping)
+- `backend/src/server.ts` (Chỉnh sửa: Tích hợp `sequelize.authenticate()` kiểm tra kết nối DB trước khi server listen)
+- `backend/src/shared/models/.gitkeep` (Tạo mới)
+- `backend/src/shared/database/migrations/.gitkeep` (Tạo mới)
+- `backend/src/shared/database/seeders/.gitkeep` (Tạo mới)
+
+### What Went Well
+- Cài đặt đầy đủ các thư viện và cấu hình linh hoạt cho cả môi trường phát triển (TypeScript code) và CLI (CommonJS configuration).
+- Sequelize instance được cấu hình chuẩn chỉ để tự động map properties camelCase sang database snake_case.
+- Server startup được ràng buộc chặt chẽ với trạng thái kết nối DB, tự động log lỗi cụ thể và dừng tiến trình an toàn khi kết nối DB lỗi.
+
+### Issues Found
+- Ban đầu T-2.1 có warning `no-explicit-any` tại file `src/shared/database/index.ts` đối với kiểu của `dbDialect` và `dbPassword`. Đã xử lý triệt để bằng cách import type an toàn `Dialect` từ Sequelize và chuyển đổi kiểu của `dbPassword` thành `string | undefined` thay vì ép kiểu `any`.
+
+### Security Review
+- Authentication: N/A.
+- Authorization: N/A.
+- Data validation: N/A.
+- Sensitive data: Không chứa bất kỳ thông tin nhạy cảm hay mật khẩu database hardcode nào. Tất cả cấu hình được nạp từ biến môi trường của file `.env` (file này đã được loại bỏ thông qua `.gitignore`). Đồng thời việc log lỗi kết nối DB được catch an toàn không làm rò rỉ connection string chứa mật khẩu.
+
+### Performance Review
+- Query: N/A.
+- Pagination: N/A.
+- File handling: N/A.
+
+### Test Review
+- Unit tests: N/A.
+- Integration tests: N/A.
+- Negative tests: Đã bắt lỗi kết nối cơ sở dữ liệu và log ra thông tin lỗi chi tiết của driver/mạng một cách an toàn mà không làm app crash không rõ lý do.
+- Thực nghiệm kiểm thử trên máy thật:
+  - Chạy `npx sequelize-cli db:create` thành công, tạo cơ sở dữ liệu `dailysnap_expense` trong MySQL.
+  - Chạy `npx sequelize-cli db:migrate:status` thành công, Sequelize CLI kết nối cơ sở dữ liệu chính xác và tạo bảng quản lý lịch sử migration `SequelizeMeta` thành công.
+  - Sửa lỗi ban đầu `Access denied for user 'root'@'localhost' (using password: NO)` bằng cách cấu hình đúng `DATABASE_PASSWORD` trong file `.env` thật.
+  - `npm run format:check`, `npm run lint` và `npm run build` đều vượt qua thành công (pass). Các warning `no-explicit-any` trong `src/shared/database/index.ts` đã được giải quyết triệt để bằng kiểu dữ liệu an toàn (`Dialect` và `string | undefined`).
+  - Chạy `npm run dev` thành công, ghi nhận log kết nối database thành công và server Express hoạt động tại cổng 5001.
+
+### Documentation Updated
+- Yes
+- Files: `docs/11-task.md`, `docs/12-review.md`
+
+### Decision
+- Approved (Nghiệm thu hoàn tất sau khi kiểm thử thành công trên máy thật).
+
+### Notes
+- Người dùng cần cài đặt dependencies mới (`npm install`) và chạy `npx sequelize-cli db:create` để tạo database trên môi trường MySQL local trước khi khởi động ứng dụng.

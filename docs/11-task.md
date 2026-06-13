@@ -39,7 +39,7 @@
     *   **Module ảnh hưởng**: DB Module
     *   **Test**: Chạy lệnh kiểm tra kết nối database thành công.
     *   **Dependency**: T-1.4
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-2.2**: Tạo migration cho bảng `users`
     *   **Mục tiêu**: Có bảng lưu thông tin người dùng trong DB.
     *   **Mô tả**: Tạo file migration khởi tạo bảng `users` với các trường id (UUID), username, email, password_hash, avatar_url, created_at, updated_at.
