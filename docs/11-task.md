@@ -28,7 +28,7 @@
     *   **Module ảnh hưởng**: Root
     *   **Test**: Kiểm tra file `.env.example` hiển thị đầy đủ các biến môi trường cần thiết.
     *   **Dependency**: T-1.2
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 
 ---
 

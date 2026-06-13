@@ -287,3 +287,48 @@ Thiết lập hệ thống kiểm tra coding conventions và tự động địn
 ### Notes
 - Hệ thống kiểm soát code style và linter đã sẵn sàng.
 - Từ các task tiếp theo, nhà phát triển bắt buộc phải chạy `npm run format` và `npm run lint` trước khi yêu cầu review hoặc push code.
+
+---
+
+## Review: T-1.4 - Cấu hình file môi trường mẫu
+
+### Date
+2026-06-14
+
+### Summary
+Cập nhật và chuẩn hóa file mẫu cấu hình biến môi trường `backend/.env.example` chứa đầy đủ 5 nhóm cấu hình cần thiết (App, Database, JWT, Upload, Security/CORS) phục vụ toàn bộ các giai đoạn phát triển tiếp theo của dự án. Thiết lập cổng mẫu mặc định là `PORT=5001` theo đặc tả yêu cầu.
+
+### Files Changed
+- `backend/.env.example` (Chỉnh sửa)
+
+### What Went Well
+- Phân chia các nhóm biến trực quan giúp nhà phát triển dễ hiểu và điền thông tin cấu hình.
+- Sử dụng các giá trị placeholder chuẩn như `replace_with_database_password` hay `replace_with_access_secret` bảo đảm an toàn, không rò rỉ thông tin bảo mật của dự án.
+- Thiết lập sẵn cổng `PORT=5001` giúp tránh xung đột với cổng `5000` của các dịch vụ hệ thống khác.
+
+### Issues Found
+- Không có.
+
+### Security Review
+- Authentication: N/A.
+- Authorization: N/A.
+- Data validation: N/A.
+- Sensitive data: Bảo đảm không chứa bất kỳ secret thật, mật khẩu database thật hay khóa ký JWT thật nào trong file mẫu. Tệp `.env` thật đã được kiểm tra và chắc chắn nằm trong danh sách bỏ qua của `.gitignore`.
+
+### Performance Review
+- N/A
+
+### Test Review
+- Unit tests: N/A
+- Integration tests: N/A
+- Negative tests: N/A
+
+### Documentation Updated
+- Yes
+- Files: `docs/11-task.md`, `docs/12-review.md`
+
+### Decision
+- Approved (File cấu hình mẫu đã được chuẩn hóa và nghiệm thu).
+
+### Notes
+- Người dùng cần cập nhật lại tệp `.env` trên máy thật bằng cách đồng bộ theo `.env.example` mới để chuẩn bị cho giai đoạn kết nối cơ sở dữ liệu và xác thực ở các Milestones tiếp theo.
