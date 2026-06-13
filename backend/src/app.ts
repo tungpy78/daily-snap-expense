@@ -23,8 +23,8 @@ app.get('/api/health', (_req: Request, res: Response) => {
     success: true,
     data: {
       status: 'ok',
-      message: 'Server is running healthily.'
-    }
+      message: 'Server is running healthily.',
+    },
   });
 });
 
@@ -36,8 +36,8 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     error: {
       code: 'INTERNAL_SERVER_ERROR',
       message: 'Đã xảy ra lỗi hệ thống nghiêm trọng.',
-      details: process.env.NODE_ENV === 'development' ? err.stack : null
-    }
+      details: process.env.NODE_ENV === 'development' ? err.stack : null,
+    },
   });
 });
 

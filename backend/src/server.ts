@@ -3,13 +3,21 @@ import app from './app';
 const PORT = process.env.PORT || 5000;
 
 const server = app.listen(PORT, () => {
-  console.log(`[Server] DailySnap Expense API is running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode.`);
+  console.log(
+    `[Server] DailySnap Expense API is running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode.`,
+  );
 });
 
+interface SystemError extends Error {
+  code?: string;
+}
+
 // Handle server startup errors (e.g. port already in use)
-server.on('error', (err: any) => {
+server.on('error', (err: SystemError) => {
   if (err.code === 'EADDRINUSE') {
-    console.error(`[Error] Port ${PORT} is already in use. Please change the PORT in your .env file.`);
+    console.error(
+      `[Error] Port ${PORT} is already in use. Please change the PORT in your .env file.`,
+    );
     process.exit(1);
   } else {
     console.error('[Error] Server failed to start:', err.message);

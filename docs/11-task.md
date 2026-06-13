@@ -21,7 +21,7 @@
     *   **Module ảnh hưởng**: Backend root
     *   **Test**: Run lệnh lint không lỗi.
     *   **Dependency**: T-1.2
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-1.4**: Cấu hình file môi trường mẫu
     *   **Mục tiêu**: Cung cấp file cấu hình mẫu cho nhà phát triển khác.
     *   **Mô tả**: Tạo `.env.example` chứa các cấu hình mẫu (DB_PORT, JWT_SECRET, v.v.).

@@ -230,3 +230,60 @@ Khởi tạo cấu trúc dự án backend nền tảng trong thư mục `backend
 ### Notes
 - Cấu hình server cơ bản và xử lý lỗi khởi động đã được nghiệm thu thực tế.
 - Các task tiếp theo có thể tự tin sử dụng khung gầm backend này.
+
+---
+
+## Review: T-1.3 - Thiết lập Linter & Formatter cho Backend (ESLint, Prettier)
+
+### Date
+2026-06-14
+
+### Summary
+Thiết lập hệ thống kiểm tra coding conventions và tự động định dạng mã nguồn (Linter & Formatter) cho backend Express TypeScript bằng cách khởi tạo các file cấu hình `.eslintrc.json`, `.prettierrc`, `.prettierignore`, bổ sung devDependencies liên quan và 4 scripts chạy lint/format vào file `package.json`.
+
+### Files Changed
+- `backend/package.json` (Chỉnh sửa)
+- `backend/.eslintrc.json` (Tạo mới)
+- `backend/.prettierrc` (Tạo mới)
+- `backend/.prettierignore` (Tạo mới)
+
+### What Went Well
+- Cấu hình thành công bộ ESLint v8 (`eslint: ^8.57.1`) ổn định kết hợp với cấu hình parser TypeScript tương ứng.
+- Sử dụng `eslint-config-prettier` tắt bỏ hoàn toàn xung đột về mặt định dạng thụt lề, dấu chấm phẩy giữa ESLint và Prettier.
+- Quy định bỏ qua (ignore) các thư mục phân phối (`dist/`, `node_modules/`, `coverage/`) thống nhất trên cả ESLint và Prettier thông qua `ignorePatterns` và file `.prettierignore`.
+- Thêm script `format:check` giúp kiểm tra nhanh định dạng code trên CI/CD mà không thay đổi file gốc.
+
+### Issues Found
+- Cảnh báo `no-explicit-any` tại `src/server.ts`: Phát hiện warning từ ESLint tại dòng `10:26` do tham số `err` được định nghĩa kiểu `any`. Đã xử lý bằng cách khai báo interface `SystemError extends Error { code?: string; }` và thay thế kiểu dữ liệu an toàn.
+- Lỗi định dạng mã nguồn phát hiện bởi `format:check`: Prettier báo cáo các file `src/app.ts` và `src/server.ts` chưa được format đúng tiêu chuẩn (ví dụ: thiếu dấu phẩy cuối ở đối tượng dưới cấu hình `"trailingComma": "all"`). Đã xử lý bằng cách chạy định dạng tự động qua Prettier.
+
+### Security Review
+- Authentication: N/A
+- Authorization: N/A
+- Data validation: N/A
+- Sensitive data: `.prettierignore` được cấu hình để bỏ qua các file môi trường `.env` và `.env.*` nhằm tránh tình trạng định dạng ghi đè làm thay đổi cấu trúc file nhạy cảm.
+
+### Performance Review
+- N/A
+
+### Test Review
+- Unit tests: N/A
+- Integration tests: N/A
+- Negative tests: N/A
+- Kiểm thử định dạng và biên dịch trên máy thật:
+  - Ban đầu `npm run format:check` phát hiện style issues tại các file `src/app.ts` và `src/server.ts` (thiếu dấu phẩy cuối).
+  - Đã xử lý định dạng tự động thành công thông qua lệnh `npm run format`.
+  - Kiểm thử lại bằng `npm run format:check` thành công, không còn cảnh báo style.
+  - Chạy `npm run lint` thành công, đạt kết quả sạch lỗi (0 errors, 0 warnings).
+  - Chạy `npm run build` thành công, biên dịch dự án TypeScript không sinh lỗi.
+
+### Documentation Updated
+- Yes
+- Files: `docs/11-task.md`, `docs/12-review.md`
+
+### Decision
+- Approved (Hệ thống Linter & Formatter hoạt động hoàn hảo và đã được nghiệm thu thực tế trên máy thật).
+
+### Notes
+- Hệ thống kiểm soát code style và linter đã sẵn sàng.
+- Từ các task tiếp theo, nhà phát triển bắt buộc phải chạy `npm run format` và `npm run lint` trước khi yêu cầu review hoặc push code.
