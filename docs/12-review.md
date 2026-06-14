@@ -823,5 +823,55 @@ Nghiệm thu toàn bộ kiểm thử trên môi trường thực tế:
 ### Decision
 - Approved (Endpoint Đăng nhập hoạt động tốt, tuân thủ kiến trúc phân tầng Layered Architecture và hoàn thành đầy đủ yêu cầu).
 
+---
+
+## Review: T-3.4-refactor-docs - Chuẩn hóa Auth DTO và siết lại Architecture Docs
+
+### Date
+2026-06-15
+
+### Summary
+Tiến hành tách biệt các interface/types đại diện cho DTO (`RegisterDto`, `LoginDto`, `AuthResponseDto`) từ `AuthService` sang một file riêng `dtos/auth.dto.ts`. Đồng thời rà soát và siết chặt các quy định về ranh giới giữa các lớp trong tài liệu kiến trúc hệ thống (`docs/05-architecture.md`) và quy tắc viết code backend (`docs/10-coding-rule.md`).
+
+### Files Changed
+- `backend/src/modules/auth/dtos/auth.dto.ts` (Tạo mới)
+- `backend/src/modules/auth/services/auth.service.ts` (Chỉnh sửa)
+- `docs/05-architecture.md` (Chỉnh sửa)
+- `docs/10-coding-rule.md` (Chỉnh sửa)
+- `docs/11-task.md` (Chỉnh sửa)
+- `docs/12-review.md` (Chỉnh sửa)
+
+### What Went Well
+- Tách DTO sạch sẽ sang file riêng giúp code trong `AuthService` chỉ tập trung vào business logic đăng ký/đăng nhập.
+- Làm rõ ràng ranh giới Layered Architecture trong tài liệu:
+  * Quy trình chuẩn: `Route -> Validation Middleware -> Controller -> Service -> Repository -> Model/Database`.
+  * Gắn validation middleware tại Route. Controller và Service tuyệt đối không được gọi hay import Sequelize Model.
+  * Chỉ duy nhất Repository được quyền thực hiện các truy vấn cơ sở dữ liệu qua Sequelize Model.
+  * Khuyến khích tách DTO/type ra file riêng để tái sử dụng.
+- Tất cả unit tests và integration tests (36/36) pass sạch sẽ. Định dạng code (format) và linting hoàn toàn sạch lỗi.
+
+### Issues Found
+- Không có.
+
+### Security Review
+- N/A.
+
+### Performance Review
+- N/A.
+
+### Test Review
+Nghiệm thu toàn bộ kiểm thử trên môi trường thực tế:
+- `npm run format` & `npm run format:check` vượt qua thành công (pass).
+- `npm run lint` vượt qua thành công (pass).
+- `npm run test` chạy thành công **3 test suites** và **36 tests** pass sạch sẽ.
+- `npm run build` biên dịch TypeScript pass 100%.
+
+### Documentation Updated
+- Yes
+- Files: `docs/05-architecture.md`, `docs/10-coding-rule.md`, `docs/11-task.md`, `docs/12-review.md`
+
+### Decision
+- Approved (Refactor cấu trúc code DTO và siết chặt tài liệu kiến trúc hoàn thành xuất sắc, đảm bảo chất lượng codebase sạch sẽ).
+
 
 

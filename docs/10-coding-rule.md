@@ -48,16 +48,19 @@ Tuân thủ mô hình phân tầng **Layered Architecture**:
 - Gọi Service để xử lý nghiệp vụ.
 - Định dạng HTTP response trả về cho client.
 - Không chứa business logic phức tạp.
-- Không query database trực tiếp.
+- **Tuyệt đối không** import trực tiếp Sequelize Model hay query database trực tiếp.
 
 ### Lớp Service
 * Nơi tập trung toàn bộ **Business Logic** và nghiệp vụ của dự án.
-* Sử dụng **Sequelize Transactions** khi có nhiều tác vụ ghi database liên tiếp để đảm bảo tính toàn vẹn dữ liệu (đặc biệt là tạo Snap đính kèm Expenses).
+* Sử dụng **Sequelize Transactions** khi có nhiều tác vụ ghi database liên tiếp để đảm bảo tính toàn vẹn dữ liệu.
 * Không tương tác trực tiếp với đối tượng Request/Response của Express.
+* **Tuyệt đối không** import trực tiếp Sequelize Model hoặc thực hiện các câu query database (phải đi qua Repository).
+* Các interface/type đại diện cho DTO (như `RegisterDto`, `LoginDto`, v.v.) nên được tách riêng ra thư mục `dtos/` để dễ tái sử dụng và giữ file Service sạch sẽ.
 
-### Lớp Repository / Sequelize Model
-* Xử lý truy vấn cơ sở dữ liệu.
+### Lớp Repository
+* Xử lý truy vấn cơ sở dữ liệu. Là tầng **duy nhất** được phép import Sequelize Model và gọi các hàm của model (`findOne`, `create`, `update`, `destroy`, v.v.).
 * Không chứa logic nghiệp vụ nâng cao ngoài các thao tác CRUD và JOIN cơ bản.
+* Đóng gói toàn bộ các cú pháp/truy vấn đặc trưng của database (như Sequelize `Op.or`, `Op.and`) để các tầng trên không bị phụ thuộc vào database cụ thể.
 
 ### Middleware & Xử lý lỗi (Error Handling)
 * Sử dụng một global error handling middleware duy nhất để bắt mọi lỗi phát sinh từ controller/service.

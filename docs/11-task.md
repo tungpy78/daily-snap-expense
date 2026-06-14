@@ -95,10 +95,17 @@
     *   **Trạng thái**: Done
 *   **T-3.4**: Endpoint Đăng nhập (`POST /api/v1/auth/login`)
     *   **Mục tiêu**: Xác thực người dùng và bắt đầu session.
-    *   **Mô tả**: Route & Controller xử lý luồng login, kiểm tra email/username và mật khẩu, trả về cặp token.
+    *   **Mô tả**: Route & Controller xử lượng login, kiểm tra email/username và mật khẩu, trả về cặp token.
     *   **Module ảnh hưởng**: Auth Module
     *   **Test**: Integration test gửi thông tin đăng nhập đúng (HTTP 200) và sai (HTTP 401).
     *   **Dependency**: T-3.3
+    *   **Trạng thái**: Done
+*   **T-3.4-refactor-docs**: Chuẩn hóa Auth DTO và siết lại Architecture Docs
+    *   **Mục tiêu**: Tách biệt Auth DTO khỏi AuthService và siết chặt quy định kiến trúc phân tầng trong tài liệu.
+    *   **Mô tả**: Di chuyển RegisterDto, LoginDto, và AuthResponseDto sang auth.dto.ts, import type vào AuthService. Cập nhật docs/05-architecture.md và docs/10-coding-rule.md để làm rõ ranh giới các layer, cấm Service/Controller gọi Model trực tiếp.
+    *   **Module ảnh hưởng**: Auth Module, Documentation
+    *   **Test**: Toàn bộ unit test và integration test (36/36) pass sạch sẽ.
+    *   **Dependency**: T-3.4
     *   **Trạng thái**: Done
 *   **T-3.5**: Endpoint Refresh Token và Đăng xuất
     *   **Mục tiêu**: Duy trì session và hủy session an toàn.

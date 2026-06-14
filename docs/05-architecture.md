@@ -85,10 +85,20 @@ Hệ thống được chia thành các module nghiệp vụ độc lập:
 ---
 
 ## Quy tắc Dependency giữa các Layer
-Để tránh lỗi tham chiếu vòng (circular dependencies) và đảm bảo code dễ kiểm thử (Unit Test):
-* **Quy tắc 1 chiều**: Dependency chỉ được đi từ ngoài vào trong: `Route` $\rightarrow$ `Controller` $\rightarrow$ `Service` $\rightarrow$ `Repository/Model`.
+Để tránh lỗi tham chiếu vòng (circular dependencies) và đảm bảo chất lượng, tính phân tách rõ ràng (separation of concerns) của dự án, bắt buộc phải tuân thủ nghiêm ngặt các quy tắc sau:
+
+* **Luồng đi chuẩn**: `Route` $\rightarrow$ `Validation Middleware` $\rightarrow$ `Controller` $\rightarrow$ `Service` $\rightarrow$ `Repository` $\rightarrow$ `Model/Database`.
+* **Quy tắc 1 chiều**: Dependency chỉ được đi từ ngoài vào trong. Không được phép gọi ngược (ví dụ: Repository gọi Service hoặc Service gọi Controller).
+* **Quy tắc Tách biệt Trách nhiệm**:
+  1. **Route Layer**: Nơi định nghĩa các endpoint và gắn các validation middlewares thích hợp.
+  2. **Validation Middleware**: Sử dụng Zod schema để validate request data (`body`, `query`, `params`). Tránh validate thủ công trong Controller khi đã có middleware `validateRequest`.
+  3. **Controller Layer**: Tiếp nhận dữ liệu sạch đã được validation middleware kiểm chứng, gọi Service và định dạng HTTP Response trả về. Controller **không** được chứa business logic và **tuyệt đối không** được import hoặc gọi trực tiếp Sequelize Model.
+  4. **Service Layer**: Nơi tập trung toàn bộ business logic. Service **tuyệt đối không** được import hoặc gọi trực tiếp Sequelize Model để query/write DB. Mọi giao tiếp cơ sở dữ liệu phải thông qua Repository.
+  5. **Repository Layer**: Là tầng **duy nhất** được quyền import và gọi các phương thức của Sequelize Model (như `Model.findOne`, `Model.create`, `Model.update`, `Model.destroy`, v.v.).
+  6. **DTO & Types**: Các interface/type như DTO nên được tách khỏi Service sang các file riêng (ví dụ: `auth.dto.ts`) nếu chúng được tái sử dụng bên ngoài Service (ví dụ: ở Controller, Validator hay Test) để giữ code Service luôn sạch sẽ và tập trung vào nghiệp vụ.
 * **Không gọi chéo Controller**: Một Controller không được gọi sang một Controller khác.
-* **Gọi chéo Service**: Trong trường hợp cần thiết, một Service có thể gọi một Service khác để tái sử dụng logic (ví dụ: `SnapService` gọi `ExpenseService` để tạo chi tiêu đính kèm), nhưng phải chú ý tránh circular dependency (Service A gọi Service B và ngược lại). Nếu có circular dependency, cần tách logic chung ra một Service thứ ba.
+* **Gọi chéo Service**: Trong trường hợp cần thiết, một Service có thể gọi một Service khác để tái sử dụng logic (ví dụ: `SnapService` gọi `ExpenseService`), nhưng phải chú ý tránh circular dependency. Nếu xảy ra, cần tách logic chung ra một Service thứ ba.
+
 
 ---
 
