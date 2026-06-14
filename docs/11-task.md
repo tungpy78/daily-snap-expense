@@ -85,7 +85,7 @@
     *   **Module ảnh hưởng**: Auth Module (Routes, Controllers, Services)
     *   **Test**: Integration test gửi payload đăng ký hợp lệ và nhận về HTTP 201 cùng cặp token.
     *   **Dependency**: T-3.1, T-3.2, T-2.4
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-3.4**: Endpoint Đăng nhập (`POST /api/v1/auth/login`)
     *   **Mục tiêu**: Xác thực người dùng và bắt đầu session.
     *   **Mô tả**: Route & Controller xử lý luồng login, kiểm tra email/username và mật khẩu, trả về cặp token.

@@ -663,5 +663,64 @@ Phát triển dịch vụ `TokenService` sử dụng thư viện `jsonwebtoken` 
 ### Decision
 - Approved (Dịch vụ TokenService hoạt động tốt, pass tất cả các kiểm tra format, lint, unit test và build trên máy thật).
 
+---
+
+## Review: T-3.3 - Endpoint Đăng ký tài khoản (POST /api/v1/auth/register)
+
+### Date
+2026-06-14
+
+### Summary
+Phát triển hoàn chỉnh API đăng ký tài khoản người dùng `/api/v1/auth/register`, bao gồm định nghĩa Sequelize model `User` tương ứng bảng `users`, xây dựng validator schema Zod `registerSchema` (tự động trim và normalize lowercase username/email), viết `AuthService` xử lý logic kiểm tra trùng lặp và băm mật khẩu, viết `AuthController` điều phối, mount route tương ứng và viết integration test kiểm định chất lượng end-to-end API.
+
+### Files Changed
+- `backend/package.json` (Chỉnh sửa: Thêm `supertest` và `@types/supertest` vào devDependencies)
+- `backend/src/app.ts` (Chỉnh sửa: Đăng ký router `authRoutes` tại đường dẫn `/api/v1/auth`)
+- `backend/src/shared/models/user.model.ts` (Tạo mới: Sequelize model `User`)
+- `backend/src/modules/auth/validators/auth.validator.ts` (Tạo mới: Schema Zod validator)
+- `backend/src/modules/auth/services/auth.service.ts` (Tạo mới: Xử lý logic đăng ký tài khoản)
+- `backend/src/modules/auth/controllers/auth.controller.ts` (Tạo mới: Xử lý request/response HTTP)
+- `backend/src/modules/auth/routes/auth.routes.ts` (Tạo mới: Định nghĩa route)
+- `backend/src/modules/auth/routes/auth.routes.spec.ts` (Tạo mới: Integration test cho API đăng ký)
+
+### What Went Well
+- API hoạt động tốt, trả về HTTP status `201 Created` và định dạng JSON thành công chuẩn với thông tin user (đã loại bỏ `password_hash`) cùng bộ tokens (Access/Refresh).
+- Tích hợp thành công middleware `validateRequest` tập trung để kiểm định dữ liệu đầu vào.
+- Thiết kế integration test hoàn thiện, sử dụng `supertest` giả lập request, tự động xóa sạch dữ liệu user test được tạo trong suite bằng hook `afterAll` với `{ force: true }` để bypass paranoid soft delete, đảm bảo không bẩn cơ sở dữ liệu dev.
+- Toàn bộ 29/29 tests pass sạch sẽ (bao gồm 9 tests của `BcryptHelper`, 14 tests của `TokenService` và 6 tests của `Auth Registration Integration Tests`).
+
+### Issues Found & Resolved
+- **Lỗi cú pháp `src/app.ts`**: Do thiếu dấu kết thúc hàm `);` của endpoint `/api/test-validation` và thiếu dấu đóng block dev routes. Đã xử lý khôi phục lại cú pháp chuẩn của Express.
+- **Lỗi kiểu dữ liệu `validateRequest` trong `auth.routes.ts`**: Truyền sai ZodObject vào middleware `validateRequest` vốn mong đợi một `ValidationSchemas` object. Đã xử lý bằng cách tách schema body thành `registerBodySchema` và khai báo `registerSchema = { body: registerBodySchema }`.
+- **Lỗi `notNull Violation: User.id cannot be null`**: Do hook `beforeValidate` của Model không tự động gán giá trị ID tại application layer khi Sequelize build query. Đã xử lý bằng cách khai báo `defaultValue: DataTypes.UUIDV4` trực tiếp tại cấu hình trường `id` của model attribute, giúp Sequelize tự động sinh UUID an toàn.
+- **Cảnh báo shadow getter/setter của Sequelize**: Khai báo các thuộc tính `id!`, `username!` dạng public class fields gây shadow getters/setters của Sequelize. Đã xử lý bằng cách thay thế sang từ khóa `declare` (`declare id: string`, v.v.).
+- **Lỗi Jest open handle**: Kết nối tới cơ sở dữ liệu MySQL của Sequelize instance bị giữ lại sau test suite. Đã xử lý bằng cách import `sequelize` và gọi `await sequelize.close()` trong block `finally` của `afterAll` hook tại file spec.
+- **Cảnh báo cài đặt package**: Ghi nhận các cảnh báo `EBADENGINE` (Node version lệch nhẹ), npm audit vulnerabilities và các deprecated packages (npmlog, rimraf, tar...). Tuy nhiên, việc này chưa cần xử lý trong phạm vi task này để tránh thay đổi dependency ngoài phạm vi.
+
+### Security Review
+- Authentication: Nền tảng đăng ký tài khoản cấp token.
+- Authorization: N/A.
+- Data validation: Zod validator bắt chặt định dạng email, mật khẩu tối thiểu 6 ký tự, username chỉ chứa chữ/số/dấu gạch dưới.
+- Sensitive data: Tuyệt đối không log thông tin nhạy cảm. Không trả về `password_hash` cho Client trong DTO.
+
+### Performance Review
+- Database: Tận dụng các Unique Index trên `username` và `email` của bảng `users` được thiết lập ở migration T-2.2 giúp truy vấn kiểm tra trùng lặp tối ưu nhất.
+
+### Test Review
+- Unit/Integration tests: Chạy pass 6/6 test cases của Integration Test Suite:
+  1. Đăng ký thành công trả về HTTP 201 cùng DTO an toàn (đầy đủ tokens, không rò rỉ `password_hash`).
+  2. Định dạng email không hợp lệ trả về HTTP 400 (`VALIDATION_ERROR`).
+  3. Mật khẩu quá ngắn (< 6 kí tự) trả về HTTP 400 (`VALIDATION_ERROR`).
+  4. Username sai định dạng (có khoảng trắng/kí tự đặc biệt) trả về HTTP 400 (`VALIDATION_ERROR`).
+  5. Đăng ký email đã tồn tại trả về HTTP 400 (`EMAIL_ALREADY_EXISTS`).
+  6. Đăng ký username đã tồn tại trả về HTTP 400 (`USERNAME_ALREADY_EXISTS`).
+
+### Documentation Updated
+- Yes
+- Files: `docs/11-task.md`, `docs/12-review.md`
+
+### Decision
+- Approved (Endpoint Đăng ký hoạt động tốt, pass tất cả các kiểm tra format, lint, unit/integration test, build và chạy thực tế thành công).
+
 
 

@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
 import { AppError } from './shared/utils/appError';
 import { validateRequest } from './middlewares/validation.middleware';
+import authRoutes from './modules/auth/routes/auth.routes';
 
 // Load environment variables
 dotenv.config();
@@ -95,6 +96,9 @@ if (process.env.NODE_ENV !== 'production') {
     },
   );
 }
+
+// Authentication Routes
+app.use('/api/v1/auth', authRoutes);
 
 // Handle 404 Not Found routes
 app.use(notFoundHandler);
