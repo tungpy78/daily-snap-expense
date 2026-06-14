@@ -394,3 +394,58 @@ Tích hợp Sequelize ORM và cấu hình kết nối database MySQL dựa trên
 
 ### Notes
 - Người dùng cần cài đặt dependencies mới (`npm install`) và chạy `npx sequelize-cli db:create` để tạo database trên môi trường MySQL local trước khi khởi động ứng dụng.
+
+---
+
+## Review: T-2.2 - Tạo migration cho bảng users
+
+### Date
+2026-06-14
+
+### Summary
+Tạo file migration khởi tạo cấu trúc bảng `users` trong cơ sở dữ liệu MySQL với các ràng buộc về unique index cho `username` và `email`, thiết lập giá trị mặc định cho `role`, `is_active` và cấu trúc soft delete bằng cột `deleted_at`.
+
+### Files Changed
+- `backend/src/shared/database/migrations/20260614010830-create-users.js` (Tạo mới)
+
+### What Went Well
+- Cấu trúc bảng `users` được thiết kế chặt chẽ kết hợp giữa tài liệu thiết kế cơ sở dữ liệu (`username` dùng cho Friendship/Auth) và các trường mở rộng yêu cầu.
+- Các index/constraint unique (`users_username_unique`, `users_email_unique`) được đặt tên cụ thể, rõ ràng.
+- Migration status đã chuyển đổi thành công từ `down` sang `up` sau khi chạy lệnh migrate.
+- Bảng `users` đã tồn tại thực tế trong DB `dailysnap_expense` đúng theo thiết kế.
+
+### Issues Found
+- File migration `.js` được tạo thủ công ban đầu chưa pass style format của Prettier. Đã được format lại bằng lệnh `npx prettier --write` và hoàn toàn pass `npm run format:check` sau đó.
+
+### Security Review
+- Authentication: N/A (Chưa triển khai logic ở task này).
+- Authorization: N/A (Chưa triển khai logic ở task này).
+- Data validation: N/A.
+- Sensitive data: Cột `password_hash` được tạo để sẵn sàng lưu mật khẩu mã hóa an toàn, không có thông tin nhạy cảm nào bị hardcode.
+
+### Performance Review
+- Query: Unique index trên `username` và `email` tối ưu hóa thời gian tìm kiếm người dùng và tốc độ đăng nhập.
+- Pagination: N/A.
+- File handling: N/A.
+
+### Test Review
+- Unit tests: N/A.
+- Integration tests: N/A.
+- Negative tests: N/A.
+- Thực nghiệm kiểm thử trên máy thật:
+  - Chạy `npx sequelize-cli db:migrate:status` chuyển từ `down` sang `up` thành công.
+  - Kiểm tra trực tiếp bảng và cấu trúc cột trong MySQL/DBeaver thành công.
+  - Các lệnh kiểm tra style và linter backend (`npm run format:check`, `npm run lint`) pass 100%.
+  - Biên dịch dự án TypeScript (`npm run build`) không có lỗi.
+  - Chạy server development (`npm run dev`) kết nối DB và lắng nghe cổng 5001 thành công.
+
+### Documentation Updated
+- Yes
+- Files: `docs/11-task.md`, `docs/12-review.md`
+
+### Decision
+- Approved (Migration đã chạy thành công và các bước kiểm thử kiểm tra đều pass trên máy thật).
+
+### Notes
+- Giá trị UUID cho `id` sẽ được sinh ở application layer (model/service) ở các bước sau vì MySQL không tự sinh UUID mặc định ổn định.
+

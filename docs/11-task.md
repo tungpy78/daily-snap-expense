@@ -46,7 +46,7 @@
     *   **Module ảnh hưởng**: DB Module (Migrations)
     *   **Test**: Chạy migration thành công và kiểm tra cấu trúc bảng trong DB.
     *   **Dependency**: T-2.1
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-2.3**: Thiết lập Base App Express & Global Error Handler
     *   **Mục tiêu**: Có một khung server chạy được và xử lý lỗi tập trung.
     *   **Mô tả**: Viết file `src/app.ts` khởi tạo Express, đăng ký parser JSON và middleware xử lý lỗi tập trung.
