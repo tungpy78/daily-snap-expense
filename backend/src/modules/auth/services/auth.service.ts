@@ -9,6 +9,11 @@ export interface RegisterDto {
   password: string;
 }
 
+export interface LoginDto {
+  identity: string;
+  password: string;
+}
+
 export interface AuthResponseDto {
   user: {
     id: string;
@@ -58,6 +63,56 @@ export class AuthService {
     const tokens = tokenService.generateAuthTokens(user.id);
 
     // 6. Return safe DTO response
+    return {
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+      },
+      tokens,
+    };
+  }
+
+  /**
+   * Authenticates a user with username/email and password.
+   * Verifies identity, active status, and password correctness, then updates last login timestamp and returns auth tokens.
+   */
+  public static async login(data: LoginDto): Promise<AuthResponseDto> {
+    const { identity, password } = data;
+
+    // 1. Find user by email or username
+    const user = await UserRepository.findByIdentity(identity);
+    if (!user) {
+      throw new AppError(
+        'Email/Tên đăng nhập hoặc mật khẩu không chính xác.',
+        401,
+        'INVALID_CREDENTIALS',
+      );
+    }
+
+    // 2. Check if user is active
+    if (!user.is_active) {
+      throw new AppError('Tài khoản đã bị khóa hoặc ngừng hoạt động.', 401, 'USER_INACTIVE');
+    }
+
+    // 3. Verify password
+    const isPasswordValid = await BcryptHelper.comparePassword(password, user.password_hash);
+    if (!isPasswordValid) {
+      throw new AppError(
+        'Email/Tên đăng nhập hoặc mật khẩu không chính xác.',
+        401,
+        'INVALID_CREDENTIALS',
+      );
+    }
+
+    // 4. Update last login timestamp in repository
+    await UserRepository.updateLastLogin(user.id);
+
+    // 5. Generate Access & Refresh JWT tokens
+    const tokens = tokenService.generateAuthTokens(user.id);
+
+    // 6. Return DTO response
     return {
       user: {
         id: user.id,

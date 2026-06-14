@@ -99,7 +99,7 @@
     *   **Module ảnh hưởng**: Auth Module
     *   **Test**: Integration test gửi thông tin đăng nhập đúng (HTTP 200) và sai (HTTP 401).
     *   **Dependency**: T-3.3
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-3.5**: Endpoint Refresh Token và Đăng xuất
     *   **Mục tiêu**: Duy trì session và hủy session an toàn.
     *   **Mô tả**: POST `/api/v1/auth/refresh` và POST `/api/v1/auth/logout`.

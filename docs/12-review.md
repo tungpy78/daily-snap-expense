@@ -769,5 +769,59 @@ Nghiệm thu toàn bộ kiểm thử trên môi trường thực tế:
 ### Decision
 - Approved (Refactor thành công, hệ thống hoạt động ổn định và tuân thủ đúng Layered Architecture).
 
+---
+
+## Review: T-3.4 - Endpoint Đăng nhập (POST /api/v1/auth/login)
+
+### Date
+2026-06-15
+
+### Summary
+Phát triển thành công endpoint đăng nhập người dùng `/api/v1/auth/login`. Đảm bảo tuân thủ nghiêm ngặt mô hình kiến trúc phân tầng Layered Architecture: `Route -> Validation Middleware -> Controller -> Service -> Repository -> Model/Database`.
+
+### Files Changed
+- `backend/src/modules/users/repositories/user.repository.ts` (Chỉnh sửa: Thêm `findByIdentity`, `updateLastLogin`)
+- `backend/src/modules/auth/validators/auth.validator.ts` (Chỉnh sửa: Thêm `loginBodySchema`, `loginSchema`)
+- `backend/src/modules/auth/services/auth.service.ts` (Chỉnh sửa: Thêm interface `LoginDto`, phương thức `login`)
+- `backend/src/modules/auth/controllers/auth.controller.ts` (Chỉnh sửa: Thêm phương thức `login`)
+- `backend/src/modules/auth/routes/auth.routes.ts` (Chỉnh sửa: Khai báo route `/login`)
+- `backend/src/modules/auth/routes/auth.routes.spec.ts` (Chỉnh sửa: Thêm 7 test cases cho endpoint login)
+
+### What Went Well
+- Luồng hoạt động hoàn toàn chính xác theo Layered Architecture: `AuthService` và `AuthController` không import hay gọi trực tiếp Sequelize model `User`. Mọi thao tác truy vấn và ghi cơ sở dữ liệu được bao bọc an toàn trong `UserRepository`.
+- Sử dụng Zod validate chặt chẽ dữ liệu đầu vào (`identity`, `password`).
+- Hỗ trợ đăng nhập linh hoạt bằng cả email hoặc username (identity).
+- Login thành công trả về HTTP 200, cấp cặp JWT Access Token và Refresh Token, đồng thời cập nhật chính xác cột `last_login_at` trong DB.
+- Trả về DTO an toàn cho client, loại bỏ hoàn toàn password_hash khỏi response.
+- Không log các thông tin nhạy cảm như mật khẩu hay token.
+
+### Issues Found
+- Không có.
+
+### Security Review
+- Authentication: Cung cấp API login cấp token xác thực cho session.
+- Authorization: Kiểm tra kỹ trạng thái tài khoản `is_active` trước khi cấp phép đăng nhập.
+- Data validation: Dữ liệu đầu vào được validate và sanitize chặt chẽ (trim, lowercase email/username).
+- Sensitive data: Không trả về mật khẩu mã hóa trong response.
+
+### Performance Review
+- Query: Truy vấn tìm kiếm user thông qua `UserRepository.findByIdentity` tối ưu nhất nhờ unique indexes của DB trên `email` và `username`.
+
+### Test Review
+Nghiệm thu toàn bộ kiểm thử trên môi trường thực tế:
+- `npm run format` & `npm run format:check` vượt qua thành công (pass).
+- `npm run lint` vượt qua thành công (pass).
+- `npm run test` chạy thành công **3 test suites** và **36 tests** pass sạch sẽ (gồm 29 tests cũ và thêm 7 tests mới cho API login).
+- `npm run build` biên dịch TypeScript pass 100%.
+- `npm run dev` khởi chạy dev server thành công.
+- Lưu ý: Các console log báo lỗi trong quá trình chạy Jest test suite là các hành vi ném lỗi có chủ đích khi thực hiện các Negative Test Cases (sai password, inactive user, identity không tồn tại).
+
+### Documentation Updated
+- Yes
+- Files: `docs/11-task.md`, `docs/12-review.md`
+
+### Decision
+- Approved (Endpoint Đăng nhập hoạt động tốt, tuân thủ kiến trúc phân tầng Layered Architecture và hoàn thành đầy đủ yêu cầu).
+
 
 

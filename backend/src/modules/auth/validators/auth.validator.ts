@@ -22,3 +22,17 @@ export const registerBodySchema = z.object({
 export const registerSchema = {
   body: registerBodySchema,
 };
+
+export const loginBodySchema = z.object({
+  identity: z
+    .string({ required_error: 'Email hoặc tên đăng nhập là bắt buộc' })
+    .trim()
+    .min(1, 'Email hoặc tên đăng nhập không được để trống'),
+  password: z
+    .string({ required_error: 'Mật khẩu là bắt buộc' })
+    .min(1, 'Mật khẩu không được để trống'),
+});
+
+export const loginSchema = {
+  body: loginBodySchema,
+};

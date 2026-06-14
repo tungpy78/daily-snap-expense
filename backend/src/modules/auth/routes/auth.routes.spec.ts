@@ -138,4 +138,114 @@ describe('Auth Registration Integration Tests', () => {
       expect(response.body.error).toHaveProperty('code', 'USERNAME_ALREADY_EXISTS');
     });
   });
+
+  describe('POST /api/v1/auth/login', () => {
+    it('should login successfully with registered email and return HTTP 200', async () => {
+      const credentials = getUniqueCredentials();
+      testUsersToCleanup.push(credentials.username);
+      await request(app).post('/api/v1/auth/register').send(credentials);
+
+      const response = await request(app).post('/api/v1/auth/login').send({
+        identity: credentials.email,
+        password: credentials.password,
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body.data).toHaveProperty('user');
+      expect(response.body.data.user.email).toBe(credentials.email);
+      expect(response.body.data.user.username).toBe(credentials.username);
+      expect(response.body.data.user).toHaveProperty('role', 'user');
+      expect(response.body.data).toHaveProperty('tokens');
+      expect(response.body.data.tokens).toHaveProperty('accessToken');
+      expect(response.body.data.tokens).toHaveProperty('refreshToken');
+
+      expect(response.body.data.user).not.toHaveProperty('password_hash');
+      expect(response.body.data.user).not.toHaveProperty('password');
+
+      const updatedUser = await User.findOne({ where: { email: credentials.email } });
+      expect(updatedUser?.last_login_at).not.toBeNull();
+    });
+
+    it('should login successfully with registered username and return HTTP 200', async () => {
+      const credentials = getUniqueCredentials();
+      testUsersToCleanup.push(credentials.username);
+      await request(app).post('/api/v1/auth/register').send(credentials);
+
+      const response = await request(app).post('/api/v1/auth/login').send({
+        identity: credentials.username,
+        password: credentials.password,
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body.data.user.email).toBe(credentials.email);
+      expect(response.body.data.user.username).toBe(credentials.username);
+    });
+
+    it('should return HTTP 401 and INVALID_CREDENTIALS when identity does not exist', async () => {
+      const response = await request(app).post('/api/v1/auth/login').send({
+        identity: 'nonexistent_user@example.com',
+        password: 'somePassword123',
+      });
+
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'INVALID_CREDENTIALS');
+    });
+
+    it('should return HTTP 401 and INVALID_CREDENTIALS when password is incorrect', async () => {
+      const credentials = getUniqueCredentials();
+      testUsersToCleanup.push(credentials.username);
+      await request(app).post('/api/v1/auth/register').send(credentials);
+
+      const response = await request(app).post('/api/v1/auth/login').send({
+        identity: credentials.email,
+        password: 'wrongPassword123',
+      });
+
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'INVALID_CREDENTIALS');
+    });
+
+    it('should return HTTP 401 and USER_INACTIVE when user is inactive', async () => {
+      const credentials = getUniqueCredentials();
+      testUsersToCleanup.push(credentials.username);
+
+      await request(app).post('/api/v1/auth/register').send(credentials);
+      await User.update({ is_active: false }, { where: { email: credentials.email } });
+
+      const response = await request(app).post('/api/v1/auth/login').send({
+        identity: credentials.email,
+        password: credentials.password,
+      });
+
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'USER_INACTIVE');
+    });
+
+    it('should return HTTP 400 and VALIDATION_ERROR when identity is empty', async () => {
+      const response = await request(app).post('/api/v1/auth/login').send({
+        identity: '',
+        password: 'somePassword123',
+      });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+
+    it('should return HTTP 400 and VALIDATION_ERROR when password is empty', async () => {
+      const response = await request(app).post('/api/v1/auth/login').send({
+        identity: 'test_user',
+        password: '',
+      });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+  });
 });
