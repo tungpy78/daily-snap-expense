@@ -1,4 +1,4 @@
-import { User } from '../../../shared/models/user.model';
+import { UserRepository } from '../../users/repositories/user.repository';
 import { BcryptHelper } from '../helpers/bcrypt.helper';
 import { tokenService } from './token.service';
 import { AppError } from '../../../shared/utils/appError';
@@ -25,19 +25,19 @@ export interface AuthResponseDto {
 export class AuthService {
   /**
    * Registers a new user account.
-   * Checks for duplicate email and username, hashes password, and issues JWT tokens.
+   * Checks for duplicate email and username via UserRepository, hashes password, and issues JWT tokens.
    */
   public static async register(data: RegisterDto): Promise<AuthResponseDto> {
     const { username, email, password } = data;
 
     // 1. Check for duplicate email
-    const existingEmail = await User.findOne({ where: { email } });
+    const existingEmail = await UserRepository.findByEmail(email);
     if (existingEmail) {
       throw new AppError('Email đã được sử dụng.', 400, 'EMAIL_ALREADY_EXISTS');
     }
 
     // 2. Check for duplicate username
-    const existingUsername = await User.findOne({ where: { username } });
+    const existingUsername = await UserRepository.findByUsername(username);
     if (existingUsername) {
       throw new AppError('Tên đăng nhập đã được sử dụng.', 400, 'USERNAME_ALREADY_EXISTS');
     }
@@ -45,13 +45,13 @@ export class AuthService {
     // 3. Hash password using BcryptHelper
     const passwordHash = await BcryptHelper.hashPassword(password);
 
-    // 4. Create new user record in database
-    const user = await User.create({
+    // 4. Create new user record using UserRepository
+    const user = await UserRepository.create({
       username,
       email,
-      password_hash: passwordHash,
+      passwordHash,
       role: 'user',
-      is_active: true,
+      isActive: true,
     });
 
     // 5. Generate Access & Refresh JWT tokens

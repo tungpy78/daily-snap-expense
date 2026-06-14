@@ -86,6 +86,13 @@
     *   **Test**: Integration test gửi payload đăng ký hợp lệ và nhận về HTTP 201 cùng cặp token.
     *   **Dependency**: T-3.1, T-3.2, T-2.4
     *   **Trạng thái**: Done
+*   **T-3.3-refactor**: Tách UserRepository cho Auth Register
+    *   **Mục tiêu**: Tách UserRepository để sửa lỗi kiến trúc (Service gọi trực tiếp Sequelize model).
+    *   **Mô tả**: Tạo UserRepository trong User Module, ánh xạ camelCase sang snake_case, refactor AuthService để chỉ gọi qua UserRepository.
+    *   **Module ảnh hưởng**: Users Module, Auth Module
+    *   **Test**: Toàn bộ unit test và integration test (29/29) pass, format và lint sạch lỗi.
+    *   **Dependency**: T-3.3
+    *   **Trạng thái**: Done
 *   **T-3.4**: Endpoint Đăng nhập (`POST /api/v1/auth/login`)
     *   **Mục tiêu**: Xác thực người dùng và bắt đầu session.
     *   **Mô tả**: Route & Controller xử lý luồng login, kiểm tra email/username và mật khẩu, trả về cặp token.

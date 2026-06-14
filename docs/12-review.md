@@ -722,5 +722,52 @@ Phát triển hoàn chỉnh API đăng ký tài khoản người dùng `/api/v1/
 ### Decision
 - Approved (Endpoint Đăng ký hoạt động tốt, pass tất cả các kiểm tra format, lint, unit/integration test, build và chạy thực tế thành công).
 
+---
+
+## Review: T-3.3-refactor - Tách UserRepository cho Auth Register
+
+### Date
+2026-06-15
+
+### Summary
+Phát hiện và khắc phục lỗi lệch kiến trúc tại task T-3.3, trong đó `AuthService` gọi trực tiếp Sequelize model `User.findOne` và `User.create`. Đã tiến hành tách lớp `UserRepository` trong module `users` để đóng gói các truy vấn cơ sở dữ liệu và ánh xạ dữ liệu đầu vào.
+
+### Files Changed
+- `backend/src/modules/users/repositories/user.repository.ts` (Tạo mới)
+- `backend/src/modules/auth/services/auth.service.ts` (Chỉnh sửa)
+
+### What Went Well
+- Tách thành công `UserRepository` với đầy đủ các phương thức truy vấn cần thiết (`findByEmail`, `findByUsername`, `create`).
+- Loại bỏ hoàn toàn sự phụ thuộc trực tiếp vào Sequelize model `User` trong lớp `AuthService`.
+- Luồng kiến trúc hiện tại tuân thủ chính xác thiết kế: `Route -> Controller -> Service -> Repository -> Model/Database`.
+- Ánh xạ rõ ràng các trường dữ liệu từ camelCase sang snake_case ở tầng Repository (`passwordHash` -> `password_hash`, `isActive` -> `is_active`).
+- Toàn bộ các kiểm tra chất lượng, định dạng code và kiểm thử tự động đều thành công tốt đẹp.
+
+### Issues Found
+- Không có.
+
+### Security Review
+- Authentication: N/A.
+- Authorization: N/A.
+- Data validation: Đảm bảo dữ liệu an toàn, không trả `password_hash` ra response, không log password hoặc token.
+
+### Performance Review
+- Query: Sử dụng các phương thức tìm kiếm tối ưu qua `UserRepository`.
+- Pagination: N/A.
+
+### Test Review
+Nghiệm thu toàn bộ kiểm thử trên môi trường thực tế:
+- `npm run format` & `npm run format:check` vượt qua thành công (pass).
+- `npm run lint` vượt qua thành công mà không có lỗi hay cảnh báo (pass).
+- Chạy kiểm thử tự động `npm run test` thành công tốt đẹp với **3 test suites** và **29 tests** pass sạch sẽ (bao gồm 6 tests cho endpoint register).
+- `npm run build` biên dịch dự án TypeScript thành công không gặp lỗi.
+
+### Documentation Updated
+- Yes
+- Files: `docs/11-task.md`, `docs/12-review.md`
+
+### Decision
+- Approved (Refactor thành công, hệ thống hoạt động ổn định và tuân thủ đúng Layered Architecture).
+
 
 
