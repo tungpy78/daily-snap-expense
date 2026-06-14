@@ -78,7 +78,7 @@
     *   **Module ảnh hưởng**: Auth Module (Services)
     *   **Test**: Unit test sinh token và verify tính hợp lệ của token.
     *   **Dependency**: T-1.4
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-3.3**: Endpoint Đăng ký tài khoản (`POST /api/v1/auth/register`)
     *   **Mục tiêu**: Cho phép khách tạo tài khoản mới.
     *   **Mô tả**: Route & Controller xử lý luồng register, validate bằng Zod, lưu user mới và trả về cặp token.

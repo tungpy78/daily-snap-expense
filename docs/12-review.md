@@ -607,5 +607,61 @@ Phát triển tiện ích mã hóa và so sánh mật khẩu an toàn sử dụn
 ### Decision
 - Approved (Tiện ích hoạt động tốt, pass tất cả các kiểm tra format, lint, unit test và build trên máy thật).
 
+---
+
+## Review: T-3.2 - Viết logic TokenService sinh/xác thực JWT
+
+### Date
+2026-06-14
+
+### Summary
+Phát triển dịch vụ `TokenService` sử dụng thư viện `jsonwebtoken` để sinh và xác thực Access Token (hạn 15 phút) và Refresh Token (hạn 7 ngày). Triển khai cấu trúc cấu hình động, giúp nạp linh hoạt cấu hình từ biến môi trường trong runtime và hỗ trợ inject cấu hình tùy biến trong các Unit Test mà không dùng secret thật.
+
+### Files Changed
+- `backend/package.json` (Chỉnh sửa: Thêm `jsonwebtoken` vào `dependencies`, `@types/jsonwebtoken` vào `devDependencies`)
+- `backend/src/modules/auth/services/token.service.ts` (Tạo mới: Dịch vụ `TokenService`)
+- `backend/src/modules/auth/services/token.service.spec.ts` (Tạo mới: Unit test cho `TokenService`)
+
+### What Went Well
+- Class `TokenService` được viết type-safe và clean code, ném ra các lỗi `AppError` chuẩn hóa của dự án.
+- Thiết lập phương thức `resolveExpiresIn` để chuyển đổi và validate an toàn dữ liệu từ biến môi trường (convert số nguyên sang `number`, kiểm soát kiểu `SignOptions['expiresIn']` của jsonwebtoken một cách chặt chẽ).
+- Tích hợp Jest unit tests đầy đủ, sử dụng Jest Fake Timers (`jest.useFakeTimers()`, `jest.setSystemTime()`) để giả lập và kiểm tra lỗi hết hạn của token cực kỳ an toàn, chính xác và hoàn toàn không bị flaky.
+- Toàn bộ 23/23 tests pass sạch sẽ (bao gồm 9 test cases của `BcryptHelper` và 14 test cases của `TokenService`).
+
+### Issues Found
+- Phát hiện lỗi build TypeScript tại thuộc tính `expiresIn` do khai báo kiểu dữ liệu `string | number` quá rộng so với kiểu `SignOptions['expiresIn']` (đòi hỏi `StringValue | number | undefined`). Đã khắc phục hoàn toàn bằng cách sử dụng kiểu dữ liệu `SignOptions['expiresIn']` và xử lý validate an toàn thông qua helper `resolveExpiresIn`.
+- Cảnh báo `EBADENGINE` and `npm audit vulnerabilities` khi cài đặt các packages do phiên bản Node hiện tại lệch nhẹ so với engine đề xuất. Tuy nhiên, việc này chưa cần xử lý trong phạm vi task này để tránh thay đổi dependency ngoài phạm vi.
+
+### Security Review
+- Authentication: Hỗ trợ sinh và xác thực token JWT, làm nền tảng cho Authentication của toàn bộ hệ thống.
+- Authorization: N/A.
+- Data validation: Xác thực token payload rỗng, token hết hạn, token sai chữ ký và token malformed đều được bắt gọn và trả về mã lỗi thích hợp.
+- Sensitive data: Tuyệt đối không log thông tin nhạy cảm (JWT Secret, Access Token, Refresh Token). Unit test sử dụng mock secret giả (`test_access_secret`, `test_refresh_secret`).
+
+### Performance Review
+- N/A.
+
+### Test Review
+- Unit tests: Viết đầy đủ unit tests và chạy pass 14/14 test cases cho `TokenService`:
+  1. `generateAccessToken` tạo token dạng string.
+  2. `generateRefreshToken` tạo token dạng string.
+  3. `generateAuthTokens` trả về đủ cả `accessToken` và `refreshToken`.
+  4. `verifyAccessToken` trả về đúng `userId` với token hợp lệ.
+  5. `verifyRefreshToken` trả về đúng `userId` với token hợp lệ.
+  6. Access token không thể được verify bằng refresh secret.
+  7. Refresh token không thể được verify bằng access secret.
+  8. Token bị sửa đổi/malformed throw lỗi `INVALID_TOKEN` (HTTP 401).
+  9. Token hết hạn throw lỗi `TOKEN_EXPIRED` (HTTP 401).
+  10. Thiếu cấu hình JWT (thiếu secret, thiếu expiresIn) throw lỗi `CONFIG_ERROR` (HTTP 500).
+- Integration tests: N/A.
+- Negative tests: Đã phủ kín các test cases cho token hết hạn, sai chữ ký, malformed và lỗi cấu hình.
+
+### Documentation Updated
+- Yes
+- Files: `docs/11-task.md`, `docs/12-review.md`
+
+### Decision
+- Approved (Dịch vụ TokenService hoạt động tốt, pass tất cả các kiểm tra format, lint, unit test và build trên máy thật).
+
 
 
