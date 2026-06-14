@@ -2,8 +2,10 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
+import { z } from 'zod';
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
 import { AppError } from './shared/utils/appError';
+import { validateRequest } from './middlewares/validation.middleware';
 
 // Load environment variables
 dotenv.config();
@@ -64,6 +66,34 @@ if (process.env.NODE_ENV !== 'production') {
       ),
     );
   });
+
+  // Test validation endpoint (Only for development/testing purpose)
+  const testBodySchema = z.object({
+    email: z.string().email('Email không đúng định dạng'),
+    age: z.number().min(18, 'Tuổi phải từ 18 trở lên'),
+  });
+
+  const testQuerySchema = z.object({
+    limit: z.coerce
+      .number({ invalid_type_error: 'Limit phải là số' })
+      .min(1, 'Limit phải từ 1 đến 100')
+      .max(100, 'Limit phải từ 1 đến 100')
+      .optional(),
+  });
+
+  app.post(
+    '/api/test-validation',
+    validateRequest({ body: testBodySchema, query: testQuerySchema }),
+    (req: Request, res: Response) => {
+      res.status(200).json({
+        success: true,
+        data: {
+          body: req.body,
+          query: req.query,
+        },
+      });
+    },
+  );
 }
 
 // Handle 404 Not Found routes

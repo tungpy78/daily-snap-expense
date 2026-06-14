@@ -501,4 +501,55 @@ Thiết lập khung ứng dụng Express vững chắc với lớp lỗi tùy ch
 ### Decision
 - Approved (Các chức năng thiết lập khung Express và xử lý lỗi tập trung hoạt động tốt và pass toàn bộ bước kiểm thử trên máy thật).
 
+---
+
+## Review: T-2.4 - Phát triển Validation Middleware bằng Zod
+
+### Date
+2026-06-14
+
+### Summary
+Phát triển middleware kiểm chứng dữ liệu đầu vào `validateRequest` tập trung bằng cách sử dụng Zod, tích hợp xử lý lỗi format validation chi tiết `VALIDATION_ERROR` (HTTP 400). Đồng thời, tối ưu cơ chế Global Error Handler để bắt lỗi JSON malformed từ body parser trả về `BAD_REQUEST` thay vì `INTERNAL_SERVER_ERROR`.
+
+### Files Changed
+- `backend/src/middlewares/validation.middleware.ts` (Tạo mới)
+- `backend/src/middlewares/error.middleware.ts` (Chỉnh sửa)
+- `backend/src/app.ts` (Chỉnh sửa)
+
+### What Went Well
+- Middleware `validateRequest` hoạt động tốt và kiểm chứng đầy đủ đồng thời `body`, `query`, `params`.
+- Lỗi kiểm chứng dữ liệu (Zod validation fail) trả về lỗi JSON chuẩn hóa dạng `VALIDATION_ERROR` với HTTP status `400` và danh sách chi tiết các trường bị lỗi trong `details`.
+- Lỗi JSON body gửi lên sai cú pháp được bắt gọn ở global error handler, trả về HTTP status `400` với mã lỗi `BAD_REQUEST` và thông điệp `"JSON body không hợp lệ."` rõ ràng, không expose stack trace ở production.
+- Code viết hoàn toàn type-safe, tuân thủ nghiêm ngặt các quy tắc kiến trúc và không lạm dụng `any` hay `eslint-disable`.
+
+### Issues Found
+- Ban đầu Prettier báo lỗi format trên các file mới tạo/sửa đổi. Đã được xử lý triệt để bằng lệnh `npm run format`.
+
+### Security Review
+- Authentication: N/A.
+- Authorization: N/A.
+- Data validation: Đã tích hợp validateRequest bảo vệ an toàn cho dữ liệu đầu vào.
+- Sensitive data: N/A.
+
+### Performance Review
+- N/A.
+
+### Test Review
+- Unit tests: N/A.
+- Integration tests: N/A.
+- Negative tests: Đã giả lập gửi dữ liệu thiếu/sai kiểu dữ liệu (trả về 400 VALIDATION_ERROR) và gửi JSON hỏng cú pháp (trả về 400 BAD_REQUEST).
+- Thực nghiệm kiểm thử trên máy thật:
+  - Các lệnh format check, lint, build và dev server khởi chạy thành công.
+  - Test validation hợp lệ trả về `HTTP 200` và coerce kiểu dữ liệu chính xác (query.limit từ string sang number).
+  - Test validation lỗi trả về `HTTP 400` đúng format `VALIDATION_ERROR`.
+  - Test malformed JSON trả về `HTTP 400` đúng format `BAD_REQUEST`.
+
+### Documentation Updated
+- Yes
+- Files: `docs/11-task.md`, `docs/12-review.md`
+
+### Decision
+- Approved (Middleware kiểm chứng Zod hoạt động hoàn hảo và đã được nghiệm thu thực tế).
+
+
 

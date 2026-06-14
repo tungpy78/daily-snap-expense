@@ -22,6 +22,14 @@ export const errorHandler = (
     code = err.code;
     message = err.message;
     details = err.details;
+  } else if (
+    err instanceof SyntaxError &&
+    (err as { status?: number }).status === 400 &&
+    'body' in err
+  ) {
+    statusCode = 400;
+    code = 'BAD_REQUEST';
+    message = 'JSON body không hợp lệ.';
   }
 
   // Safely log the error info without leaking sensitive application secrets.

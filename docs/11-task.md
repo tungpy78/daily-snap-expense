@@ -60,7 +60,7 @@
     *   **Module ảnh hưởng**: Middleware
     *   **Test**: Viết Unit Test truyền dữ liệu sai định dạng qua middleware kiểm tra mã lỗi trả về.
     *   **Dependency**: T-2.3
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 
 ---
 
