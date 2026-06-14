@@ -71,7 +71,7 @@
     *   **Module ảnh hưởng**: Auth Module (Helpers)
     *   **Test**: Unit test kiểm tra hash mật khẩu và khớp mật khẩu khi so sánh lại.
     *   **Dependency**: T-2.2
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-3.2**: Viết logic TokenService sinh/xác thực JWT
     *   **Mục tiêu**: Tạo Access Token và Refresh Token cho session người dùng.
     *   **Mô tả**: Sử dụng thư viện `jsonwebtoken` sinh access token (hạn ngắn) và refresh token (hạn dài).

@@ -551,5 +551,61 @@ Phát triển middleware kiểm chứng dữ liệu đầu vào `validateRequest
 ### Decision
 - Approved (Middleware kiểm chứng Zod hoạt động hoàn hảo và đã được nghiệm thu thực tế).
 
+---
+
+## Review: T-3.1 - Phát triển tiện ích mã hóa mật khẩu
+
+### Date
+2026-06-14
+
+### Summary
+Phát triển tiện ích mã hóa và so sánh mật khẩu an toàn sử dụng thư viện `bcrypt`, cấu hình framework kiểm thử Jest cho backend và viết các test cases kiểm tra đầy đủ các kịch bản thành công cũng như các kịch bản biên/lỗi.
+
+### Files Changed
+- `backend/package.json` (Chỉnh sửa: Thêm scripts test, dependencies `bcrypt`, và devDependencies `jest`, `ts-jest`, `@types/bcrypt`, `@types/jest`)
+- `backend/jest.config.js` (Tạo mới: Cấu hình Jest chạy test trong `src`, loại trừ `dist` và `node_modules`)
+- `backend/src/modules/auth/helpers/bcrypt.helper.ts` (Tạo mới: Lớp utility `BcryptHelper`)
+- `backend/src/modules/auth/helpers/bcrypt.helper.spec.ts` (Tạo mới: Unit test cho `BcryptHelper` với 9 test cases)
+
+### What Went Well
+- Tiện ích `BcryptHelper` được viết type-safe và clean code, không sử dụng `any`, không lạm dụng `eslint-disable`.
+- Đã cấu hình và tích hợp thành công framework kiểm thử Jest cùng `ts-jest` cho backend TypeScript.
+- Viết đầy đủ kịch bản kiểm thử (unit test) đạt độ bao phủ cao (9/9 cases).
+- Xử lý tốt các tình huống biên như mật khẩu rỗng và xử lý an toàn lỗi giải mã mật khẩu không hợp lệ, không gây crash ứng dụng.
+
+### Issues Found
+- Cảnh báo của Prettier định dạng file chưa chuẩn ban đầu và lỗi ESLint `error is defined but never used` khi catch lỗi trong method `comparePassword`. Đã xử lý triệt để bằng cách chạy `npm run format` định dạng lại các file và sửa thành optional catch binding `catch {}` trong file `bcrypt.helper.ts`.
+- Ghi nhận cảnh báo `EBADENGINE` và `npm audit vulnerabilities` khi cài đặt các packages do phiên bản Node hiện tại (`v22.12.0`) lệch nhẹ so với engine đề xuất. Tuy nhiên, việc này chưa cần xử lý trong phạm vi task này để tránh thay đổi dependency ngoài phạm vi.
+
+### Security Review
+- Authentication: Chuẩn bị cơ sở bảo mật cho luồng đăng ký/đăng nhập.
+- Authorization: N/A.
+- Data validation: Mật khẩu rỗng bị phát hiện và throw error lập tức.
+- Sensitive data: Salt rounds mặc định là `10` theo đúng yêu cầu nghiệp vụ. Đảm bảo tuyệt đối không log plain password hoặc password hash trong code.
+
+### Performance Review
+- N/A.
+
+### Test Review
+- Unit tests: Viết đầy đủ unit tests và chạy pass 9/9 cases:
+  1. `hashPassword` trả về string hash.
+  2. Hash không trùng với plain password.
+  3. Cùng một password hash nhiều lần tạo hash khác nhau do random salt.
+  4. Mật khẩu trống hoặc chỉ chứa khoảng trắng bị reject.
+  5. `comparePassword` trả về `true` với mật khẩu chính xác.
+  6. `comparePassword` trả về `false` với mật khẩu sai.
+  7. Mật khẩu rỗng khi compare bị reject.
+  8. Hash rỗng trả về `false` an toàn.
+  9. Hash sai định dạng trả về `false` an toàn, không crash.
+- Integration tests: N/A.
+- Negative tests: Đã phủ kín các test cases cho mật khẩu trống, hash trống và hash lỗi định dạng.
+
+### Documentation Updated
+- Yes
+- Files: `docs/11-task.md`, `docs/12-review.md`
+
+### Decision
+- Approved (Tiện ích hoạt động tốt, pass tất cả các kiểm tra format, lint, unit test và build trên máy thật).
+
 
 
