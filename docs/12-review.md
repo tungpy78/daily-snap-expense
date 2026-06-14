@@ -449,3 +449,56 @@ Tạo file migration khởi tạo cấu trúc bảng `users` trong cơ sở dữ
 ### Notes
 - Giá trị UUID cho `id` sẽ được sinh ở application layer (model/service) ở các bước sau vì MySQL không tự sinh UUID mặc định ổn định.
 
+---
+
+## Review: T-2.3 - Thiết lập Base App Express & Global Error Handler
+
+### Date
+2026-06-14
+
+### Summary
+Thiết lập khung ứng dụng Express vững chắc với lớp lỗi tùy chỉnh `AppError` và middleware xử lý lỗi tập trung (`errorHandler`), tích hợp kèm middleware xử lý lỗi route không tồn tại (`notFoundHandler`). Cấu trúc phản hồi lỗi JSON tuân thủ đầy đủ đặc tả API.
+
+### Files Changed
+- `backend/src/shared/utils/appError.ts` (Tạo mới)
+- `backend/src/middlewares/error.middleware.ts` (Tạo mới)
+- `backend/src/app.ts` (Chỉnh sửa)
+
+### What Went Well
+- Global error handler được tích hợp thành công, định dạng toàn bộ response lỗi về JSON chuẩn theo `docs/08-api.md`.
+- Lớp `AppError` và helper `catchAsync` được xây dựng hoàn toàn type-safe, không sử dụng `any`, không lạm dụng `eslint-disable`.
+- Cơ chế 404 handler (`notFoundHandler`) hoạt động tốt, trả về JSON lỗi chuẩn khi truy cập route không tồn tại (không trả HTML mặc định của Express).
+- Cấu hình phân chia môi trường hoạt động tốt: Trả thêm trường `stack` ở môi trường `development` và ẩn nó đi ở `production`.
+- Đã kiểm tra thực nghiệm và chứng minh được `catchAsync` bắt lỗi bất đồng bộ thành công.
+
+### Issues Found
+- Ban đầu một số file code mới tạo (`src/app.ts` và `src/middlewares/error.middleware.ts`) chưa pass kiểm tra code format của Prettier. Đã được định dạng lại hoàn chỉnh bằng lệnh `npm run format`.
+
+### Security Review
+- Authentication: N/A.
+- Authorization: N/A.
+- Data validation: N/A.
+- Sensitive data: Ghi nhận console.error được lọc và không log các dữ liệu nhạy cảm như password, JWT secret, connection string.
+
+### Performance Review
+- N/A.
+
+### Test Review
+- Unit tests: N/A.
+- Integration tests: N/A.
+- Negative tests: Đã giả lập lỗi 400 (Bad Request), 404 (Not Found), 500 (Sync/Async Internal Error) và xác minh JSON response phản hồi đúng cấu trúc.
+- Thực nghiệm kiểm thử trên máy thật:
+  - `npm run format:check` pass.
+  - `npm run lint` pass.
+  - `npm run build` pass.
+  - `npm run dev` pass (server kết nối database thành công).
+  - Test trực tiếp các endpoint `GET /api/health`, `GET /api/not-exist`, `GET /api/test-error?type=bad_request`, `GET /api/test-error?type=async_error` đều cho kết quả khớp mong muốn.
+
+### Documentation Updated
+- Yes
+- Files: `docs/11-task.md`, `docs/12-review.md`
+
+### Decision
+- Approved (Các chức năng thiết lập khung Express và xử lý lỗi tập trung hoạt động tốt và pass toàn bộ bước kiểm thử trên máy thật).
+
+

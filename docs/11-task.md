@@ -53,7 +53,7 @@
     *   **Module ảnh hưởng**: Route & Middleware
     *   **Test**: Khởi động server thành công, truy cập endpoint test trả về response lỗi chuẩn khi ném ra lỗi bất kỳ.
     *   **Dependency**: T-1.2
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-2.4**: Phát triển Validation Middleware bằng Zod
     *   **Mục tiêu**: Validate request payload trước khi vào Controller.
     *   **Mô tả**: Viết middleware nhận vào schema Zod, thực hiện validate `req.body`/`req.query`/`req.params`. Trả về lỗi `VALIDATION_ERROR` nếu không hợp lệ.

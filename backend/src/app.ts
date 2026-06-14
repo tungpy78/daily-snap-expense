@@ -2,6 +2,8 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
+import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
+import { AppError } from './shared/utils/appError';
 
 // Load environment variables
 dotenv.config();
@@ -28,17 +30,46 @@ app.get('/api/health', (_req: Request, res: Response) => {
   });
 });
 
-// Basic global error handler middleware
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-  console.error('Unhandled Error:', err.message);
-  res.status(500).json({
-    success: false,
-    error: {
-      code: 'INTERNAL_SERVER_ERROR',
-      message: 'Đã xảy ra lỗi hệ thống nghiêm trọng.',
-      details: process.env.NODE_ENV === 'development' ? err.stack : null,
-    },
+// Test error endpoint (Only for development/testing purpose)
+if (process.env.NODE_ENV !== 'production') {
+  app.get('/api/test-error', (req: Request, _res: Response, next: NextFunction) => {
+    const { type } = req.query;
+
+    if (type === 'bad_request') {
+      return next(new AppError('Yêu cầu không hợp lệ (Mock BadRequest).', 400, 'BAD_REQUEST'));
+    }
+    if (type === 'unauthorized') {
+      return next(new AppError('Bạn chưa xác thực (Mock Unauthorized).', 401, 'UNAUTHORIZED'));
+    }
+    if (type === 'forbidden') {
+      return next(new AppError('Bạn không có quyền truy cập (Mock Forbidden).', 403, 'FORBIDDEN'));
+    }
+    if (type === 'async_error') {
+      Promise.resolve()
+        .then(() => {
+          throw new Error('Lỗi bất đồng bộ không xác định (Mock Async Error).');
+        })
+        .catch(next);
+      return;
+    }
+    if (type === 'unknown') {
+      throw new Error('Lỗi đồng bộ không xác định (Mock Sync Error).');
+    }
+
+    next(
+      new AppError(
+        'Vui lòng cung cấp tham số type hợp lệ (?type=bad_request|unauthorized|forbidden|async_error|unknown).',
+        400,
+        'BAD_REQUEST',
+      ),
+    );
   });
-});
+}
+
+// Handle 404 Not Found routes
+app.use(notFoundHandler);
+
+// Global Error Handler
+app.use(errorHandler);
 
 export default app;
