@@ -2573,3 +2573,110 @@ lint: pass
 full test: 9 suites passed, 166 tests passed
 build: pass
 ```
+
+---
+
+## Review: T-7.2 - Tích hợp upload ảnh snap thông qua LocalStorageProvider
+
+### Date
+2026-06-15
+
+### Tóm tắt triển khai
+* Đã tạo Sequelize model:
+```txt
+src/shared/models/snap.model.ts
+```
+* Model `Snap` map đúng bảng:
+```txt
+snaps
+```
+* Đã thêm test upload ảnh snap bằng `LocalStorageProvider`:
+```txt
+src/shared/storage/snap-upload.spec.ts
+```
+* Đã chỉnh sửa `Expense` model để thiết lập association với `Snap`:
+```txt
+src/shared/models/expense.model.ts
+```
+* Không tạo Snap API.
+* Không tạo Snap route.
+* Không tạo Snap controller/service/repository/validator.
+* Không tạo migration mới.
+* Không sửa `.env`.
+
+### Snap model
+Ghi nhận model `Snap` có các field:
+```txt
+id: string
+user_id: string
+image_url: string
+caption: string | null
+is_private: boolean
+created_at: Date
+updated_at: Date
+deleted_at: Date | null
+```
+Config model:
+```txt
+tableName: snaps
+timestamps: true
+createdAt: created_at
+updatedAt: updated_at
+paranoid: true
+deletedAt: deleted_at
+underscored: true
+```
+Ghi nhận đã khai báo rõ:
+```txt
+SnapAttributes
+SnapCreationAttributes
+```
+và dùng `Optional` của Sequelize cho creation attributes phù hợp.
+
+### Association
+Ghi nhận association đã được thiết lập ở mức model:
+```txt
+Snap belongsTo User qua user_id
+User hasMany Snap qua user_id
+Expense belongsTo Snap qua snap_id
+Snap hasMany Expense qua snap_id
+```
+Ghi nhận build TypeScript đã pass, không có lỗi circular import.
+
+### Storage upload test
+Ghi nhận file test:
+```txt
+src/shared/storage/snap-upload.spec.ts
+```
+Test trực tiếp:
+```txt
+LocalStorageProvider
+```
+Không dùng:
+```txt
+API
+Supertest
+uploadImageMiddleware
+```
+Các trường hợp đã bao phủ:
+1. Upload ảnh `.jpg` vào folder `snaps`.
+2. Upload ảnh `.jpeg` vào folder `snaps`.
+3. Upload ảnh `.png` vào folder `snaps`.
+4. URL trả về chứa static path:
+```txt
+/public/uploads/snaps/
+```
+5. File thật sự tồn tại trên disk sau upload.
+6. `deleteImage(imageUrl)` xóa được file đã upload.
+7. File sai extension như `.txt` bị chặn.
+8. Cleanup sạch file test sau khi chạy.
+
+### Kết quả nghiệm thu
+```txt
+snap-upload test riêng: 1 suite passed, 5 tests passed
+format: pass
+format:check: pass
+lint: pass
+full test: 10 suites passed, 171 tests passed
+build: pass
+```

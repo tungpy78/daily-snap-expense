@@ -234,7 +234,7 @@
     *   **Module ảnh hưởng**: Storage Module
     *   **Test**: Gọi hàm upload và kiểm tra đường dẫn URL tĩnh trả về truy cập được ảnh.
     *   **Dependency**: T-4.2, T-7.1
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-7.3**: API Đăng Snap kèm Chi tiêu (`POST /api/v1/snaps`)
     *   **Mục tiêu**: Tạo snap và các chi tiêu đính kèm đồng thời bảo đảm tính toàn vẹn dữ liệu.
     *   **Mô tả**: API multipart/form-data nhận file ảnh và chuỗi JSON `expenses`. Sử dụng **Sequelize Transaction** để tạo snap và tạo các khoản chi đính kèm. Rollback nếu có lỗi xảy ra.

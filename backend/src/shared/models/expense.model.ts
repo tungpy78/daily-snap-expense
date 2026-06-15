@@ -1,5 +1,6 @@
 import { DataTypes, Model, type Optional, literal } from 'sequelize';
 import sequelize from '../database/index';
+import { Snap } from './snap.model';
 
 export interface ExpenseAttributes {
   id: string;
@@ -89,3 +90,6 @@ Expense.init(
     deletedAt: 'deleted_at',
   },
 );
+
+Expense.belongsTo(Snap, { foreignKey: 'snap_id', as: 'snap' });
+Snap.hasMany(Expense, { foreignKey: 'snap_id', as: 'expenses' });
