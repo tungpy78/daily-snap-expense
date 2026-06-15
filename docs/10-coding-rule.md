@@ -36,6 +36,10 @@ Tuân thủ mô hình phân tầng **Layered Architecture**:
 - Chỉ định nghĩa endpoint, HTTP method và gắn middleware cần thiết.
 - Middleware có thể bao gồm: authentication, authorization, validation, upload file.
 - Không chứa business logic.
+- Không mount từng module route trực tiếp trong app.ts.
+- app.ts chỉ mount root API router, ví dụ `app.use('/api/v1', apiV1Routes)`.
+- Các module route phải được đăng ký tập trung trong `src/routes/index.ts`.
+- Khi thêm module mới, chỉ cập nhật `src/routes/index.ts`, hạn chế làm `app.ts` phình ra.
 
 ### Validation Middleware
 - Chịu trách nhiệm validate `req.body`, `req.query`, `req.params` bằng Zod schema.

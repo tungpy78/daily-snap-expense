@@ -6,9 +6,7 @@ import { z } from 'zod';
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
 import { AppError } from './shared/utils/appError';
 import { validateRequest } from './middlewares/validation.middleware';
-import authRoutes from './modules/auth/routes/auth.routes';
-import userRoutes from './modules/users/routes/user.routes';
-import categoryRoutes from './modules/categories/routes/category.routes';
+import apiV1Routes from './routes';
 import { authMiddleware } from './middlewares/auth.middleware';
 
 // Load environment variables
@@ -109,14 +107,8 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
-// Authentication Routes
-app.use('/api/v1/auth', authRoutes);
-
-// User Routes
-app.use('/api/v1/users', userRoutes);
-
-// Category Routes
-app.use('/api/v1/categories', categoryRoutes);
+// API V1 Routes
+app.use('/api/v1', apiV1Routes);
 
 // Handle 404 Not Found routes
 app.use(notFoundHandler);

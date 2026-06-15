@@ -5,6 +5,13 @@ import type { CreateCategoryData } from '../dtos/category.dto';
 
 export class CategoryRepository {
   /**
+   * Finds a category by its ID.
+   */
+  public static async findById(id: string): Promise<Category | null> {
+    return Category.findByPk(id);
+  }
+
+  /**
    * Retrieves all categories available to a user.
    * This includes system/default categories (user_id IS NULL) and the user's custom categories.
    */

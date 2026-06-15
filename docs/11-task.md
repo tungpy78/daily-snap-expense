@@ -195,7 +195,7 @@
     *   **Module ảnh hưởng**: Expense Module
     *   **Test**: Gửi khoản chi hợp lệ (HTTP 201), gửi khoản chi âm (HTTP 400 Validation Error).
     *   **Dependency**: T-6.1, T-3.6
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-6.3**: API Lấy danh sách chi tiêu (`GET /api/v1/expenses`)
     *   **Mục tiêu**: Xem lịch sử chi tiêu có phân trang và bộ lọc.
     *   **Mô tả**: Truy vấn các khoản chi chưa bị xóa mềm của user. JOIN thông tin snap liên kết, xử lý an toàn nếu snap đã bị xóa mềm bằng cách trả về `snapDeleted: true` và `imageUrl: null`.

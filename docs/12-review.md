@@ -1751,5 +1751,191 @@ test: 8 suites passed, 103 tests passed
 build: pass
 ```
 
+---
 
+## Review: T-6.2 - API Thêm chi tiêu thủ công
 
+### Date
+2026-06-15
+
+### Tóm tắt triển khai
+* Đã thêm endpoint:
+```txt
+POST /api/v1/expenses
+```
+* Endpoint protected bằng `authMiddleware`.
+* Có validation bằng `validateRequest(createExpenseSchema)`.
+* API cho phép user tạo expense thủ công, không upload ảnh.
+* Không tạo migration mới.
+* Không sửa migration/seeder cũ.
+* Không tạo API list/update/delete expense trong task này.
+
+### Refactor root router
+Ghi nhận đã tạo:
+```txt
+src/routes/index.ts
+```
+Mục đích:
+* Đăng ký tập trung các module routes.
+* `app.ts` không mount từng module route trực tiếp nữa.
+* `app.ts` chỉ mount:
+```ts
+app.use('/api/v1', apiV1Routes);
+```
+Các endpoint cũ vẫn giữ nguyên:
+```txt
+/api/v1/auth
+/api/v1/users
+/api/v1/categories
+```
+Endpoint mới:
+```txt
+/api/v1/expenses
+```
+
+### Kiến trúc
+Ghi nhận tuân thủ luồng:
+```txt
+Route -> authMiddleware -> validateRequest -> Controller -> Service -> Repository -> Model/Database
+```
+Trong đó:
+* Route gắn `authMiddleware` và `validateRequest`.
+* Controller gọi Service, không chứa business logic.
+* Service gọi Repository, không query Sequelize Model trực tiếp.
+* Repository là tầng duy nhất import/query `Expense` Sequelize Model.
+* Service dùng `CategoryRepository` để kiểm tra quyền dùng category.
+
+### Files tạo mới/sửa đổi
+Ghi nhận tạo mới:
+```txt
+src/routes/index.ts
+src/shared/models/expense.model.ts
+src/modules/expenses/dtos/expense.dto.ts
+src/modules/expenses/validators/expense.validator.ts
+src/modules/expenses/repositories/expense.repository.ts
+src/modules/expenses/services/expense.service.ts
+src/modules/expenses/controllers/expense.controller.ts
+src/modules/expenses/routes/expense.routes.ts
+src/modules/expenses/routes/expense.routes.spec.ts
+```
+Ghi nhận sửa:
+```txt
+src/app.ts
+src/modules/categories/repositories/category.repository.ts
+```
+
+### Expense model
+Ghi nhận model `Expense` map đúng bảng `expenses`:
+```txt
+id
+user_id
+snap_id
+category_id
+amount
+note
+date
+created_at
+updated_at
+deleted_at
+```
+Ghi nhận có soft delete:
+```ts
+paranoid: true
+deletedAt: 'deleted_at'
+createdAt: 'created_at'
+updatedAt: 'updated_at'
+```
+Ghi nhận model có khai báo rõ:
+```txt
+ExpenseAttributes
+ExpenseCreationAttributes
+Expense extends Model<ExpenseAttributes, ExpenseCreationAttributes>
+```
+
+### Validator
+Ghi nhận `createExpenseSchema`:
+* `amount`: required, number, > 0.
+* `categoryId`: required, UUID.
+* `note`: optional/nullable, max 1000 ký tự.
+* `date`: optional, format `YYYY-MM-DD`.
+* `snapId`: optional/nullable, UUID nếu có.
+
+### Category permission rule
+Ghi nhận trước khi tạo expense, service kiểm tra category:
+```txt
+category không tồn tại -> 400 CATEGORY_NOT_FOUND
+category custom của user khác -> 403 FORBIDDEN
+category hệ thống user_id = NULL -> cho phép
+category custom của chính user -> cho phép
+```
+
+### Create expense flow
+Ghi nhận service xử lý:
+* Normalize `note`: trim, chuỗi rỗng -> `null`.
+* Nếu không gửi `date`, tự gán ngày hiện tại dạng `YYYY-MM-DD`.
+* Nếu không gửi `snapId`, gán `null`.
+* Gọi `ExpenseRepository.create`.
+* Map sang safe DTO.
+
+### Response DTO
+Ghi nhận response thành công:
+```ts
+{
+  id: string;
+  amount: number;
+  categoryId: string;
+  note: string | null;
+  date: string;
+  snapId: string | null;
+  createdAt: string;
+}
+```
+Không trả:
+```txt
+user_id
+category_id
+snap_id
+deleted_at
+updated_at
+```
+Lưu ý: `snapId` là field client-facing, còn `snap_id` là DB/internal field.
+
+### Test cases
+Ghi nhận integration tests đã bao phủ:
+1. Không có Authorization header -> 401 `UNAUTHORIZED`.
+2. Token không hợp lệ -> 401 `INVALID_TOKEN`.
+3. `amount` thiếu/null/<=0 -> 400 `VALIDATION_ERROR`.
+4. `categoryId` thiếu/sai UUID -> 400 `VALIDATION_ERROR`.
+5. `note` quá 1000 ký tự -> 400 `VALIDATION_ERROR`.
+6. `date` sai format `YYYY-MM-DD` -> 400 `VALIDATION_ERROR`.
+7. `snapId` sai UUID -> 400 `VALIDATION_ERROR`.
+8. `categoryId` không tồn tại -> 400 `CATEGORY_NOT_FOUND`.
+9. `categoryId` là custom category của user khác -> 403 `FORBIDDEN`.
+10. Tạo expense với category hệ thống -> 201.
+11. Tạo expense với custom category của chính user -> 201.
+12. Không gửi `date` -> hệ thống gán ngày hiện tại.
+13. Response là safe DTO, không leak internal fields.
+14. DB ghi đúng `user_id`, `category_id`, `amount`, `date`, `snap_id`.
+15. User2 tạo expense với system category -> 201.
+16. User2 tạo expense với custom category của user2 -> 201.
+17. User2 không tạo được expense với custom category của user1 -> 403.
+18. Cleanup sạch dữ liệu test sau suite.
+
+### Technical note
+Ghi nhận lỗi đã sửa trong quá trình nghiệm thu:
+* `token2` trong `expense.routes.spec.ts` khai báo nhưng chưa dùng.
+* Đã bổ sung test user2 để dùng `token2` có ý nghĩa và tăng coverage phân quyền.
+* `DataTypes.literal` không tồn tại trong Sequelize.
+* Đã sửa bằng cách import trực tiếp `literal` từ `sequelize` và dùng:
+```ts
+defaultValue: literal('(CURRENT_DATE)')
+```
+
+### Kết quả nghiệm thu
+```txt
+format: pass
+format:check: pass
+lint: pass
+test: 9 suites passed, 118 tests passed
+build: pass
+```
