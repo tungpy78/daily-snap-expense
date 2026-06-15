@@ -77,3 +77,65 @@ export const createSnapSchema = {
     ),
   }),
 };
+
+export const timelineQuerySchema = {
+  query: z
+    .object({
+      startDate: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày bắt đầu phải có định dạng YYYY-MM-DD.')
+        .optional(),
+      endDate: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày kết thúc phải có định dạng YYYY-MM-DD.')
+        .optional(),
+      search: z.preprocess((val) => {
+        if (typeof val === 'string') {
+          const trimmed = val.trim();
+          return trimmed === '' ? undefined : trimmed;
+        }
+        return val;
+      }, z.string().max(100, 'Từ khóa tìm kiếm không được vượt quá 100 ký tự.').optional()),
+      limit: z.preprocess(
+        (val) => {
+          if (val === undefined || val === null || val === '') {
+            return undefined;
+          }
+          const parsed = Number(val);
+          return isNaN(parsed) ? val : parsed;
+        },
+        z
+          .number({ invalid_type_error: 'Limit phải là số.' })
+          .int('Limit phải là số nguyên.')
+          .min(1, 'Limit phải lớn hơn hoặc bằng 1.')
+          .max(100, 'Limit không được vượt quá 100.')
+          .default(20),
+      ),
+      offset: z.preprocess(
+        (val) => {
+          if (val === undefined || val === null || val === '') {
+            return undefined;
+          }
+          const parsed = Number(val);
+          return isNaN(parsed) ? val : parsed;
+        },
+        z
+          .number({ invalid_type_error: 'Offset phải là số.' })
+          .int('Offset phải là số nguyên.')
+          .min(0, 'Offset phải lớn hơn hoặc bằng 0.')
+          .default(0),
+      ),
+    })
+    .refine(
+      (data) => {
+        if (data.startDate && data.endDate) {
+          return data.startDate <= data.endDate;
+        }
+        return true;
+      },
+      {
+        message: 'Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc.',
+        path: ['startDate'],
+      },
+    ),
+};

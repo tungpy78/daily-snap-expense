@@ -2734,3 +2734,188 @@ Triển khai hoàn chỉnh API đăng Snap kèm chi tiêu (`POST /api/v1/snaps`)
 ### Decision
 - Approved.
 ```
+
+---
+
+## Review: T-7.4 - API Lấy dòng thời gian cá nhân (GET /api/v1/snaps/timeline)
+
+### Date
+2026-06-15
+
+### Tóm tắt triển khai
+Đã triển khai endpoint:
+```txt
+GET /api/v1/snaps/timeline
+```
+
+Route protected:
+```txt
+authMiddleware
+```
+
+Route flow:
+```txt
+Route -> authMiddleware -> validateRequest(timelineQuerySchema) -> SnapController.getTimeline -> SnapService.getTimeline -> SnapRepository.findTimelineByUser -> Model/Database
+```
+
+Các file chính đã cập nhật:
+- `src/modules/snaps/dtos/snap.dto.ts`
+- `src/modules/snaps/validators/snap.validator.ts`
+- `src/modules/snaps/repositories/snap.repository.ts`
+- `src/modules/snaps/services/snap.service.ts`
+- `src/modules/snaps/controllers/snap.controller.ts`
+- `src/modules/snaps/routes/snap.routes.ts`
+- `src/modules/snaps/routes/snap.routes.spec.ts`
+- `src/shared/models/snap.model.ts`
+- `src/shared/models/expense.model.ts`
+- `src/shared/models/category.model.ts`
+
+Không tạo migration mới.
+Không sửa `app.ts`.
+Không sửa `.env`.
+
+### API behavior
+Endpoint:
+```txt
+GET /api/v1/snaps/timeline
+```
+
+Query params:
+```txt
+startDate?: YYYY-MM-DD
+endDate?: YYYY-MM-DD
+search?: string
+limit?: number, default 20, min 1, max 100
+offset?: number, default 0, min 0
+```
+
+Timeline cá nhân chỉ lấy:
+```txt
+snaps.user_id = currentUserId
+```
+Không lấy snap public của user khác trong task này.
+
+Response success:
+```json
+{
+  "success": true,
+  "data": {
+    "snaps": [
+      {
+        "id": "snap-uuid",
+        "imageUrl": "http://localhost:5001/public/uploads/snaps/image.jpg",
+        "caption": "Buổi chiều mát mẻ",
+        "isPrivate": true,
+        "createdAt": "2026-06-13T15:30:00.000Z",
+        "expenses": [
+          {
+            "id": "expense-uuid",
+            "amount": 50000,
+            "categoryId": "category-uuid",
+            "categoryName": "Ăn uống",
+            "note": "Mua trà sữa",
+            "date": "2026-06-13"
+          }
+        ],
+        "reactions": []
+      }
+    ],
+    "pagination": {
+      "total": 1,
+      "limit": 20,
+      "offset": 0
+    }
+  }
+}
+```
+
+Không leak internal fields:
+- `user_id`
+- `image_url`
+- `is_private`
+- `deleted_at`
+- `updated_at`
+- `category_id`
+- `snap_id`
+
+### Repository
+Ghi nhận `SnapRepository.findTimelineByUser` xử lý:
+- Lọc theo current user.
+- Lọc `startDate`/`endDate` trên `created_at`.
+- Search caption bằng `Op.like`.
+- Include expenses.
+- Include category của expense.
+- Dùng `distinct: true` để tránh count sai khi Snap hasMany Expense.
+- Sort `created_at` DESC, `id` DESC.
+- Áp dụng limit/offset.
+
+### Service
+Ghi nhận `SnapService.getTimeline` xử lý:
+- Map DTO sạch.
+- Ép `amount` từ DECIMAL/string sang number.
+- Map `categoryName` từ `expense.category?.name ?? null`.
+- Gán `reactions: []`.
+- Trả pagination gồm `total`, `limit`, `offset`.
+
+### Validator
+Ghi nhận `timelineQuerySchema` xử lý:
+- `limit` default 20, min 1, max 100.
+- `offset` default 0, min 0.
+- `startDate`/`endDate` format `YYYY-MM-DD`.
+- `startDate > endDate` -> `VALIDATION_ERROR`.
+- `search` trim, empty string -> `undefined`, max 100.
+
+### Test cases
+Ghi nhận đã bổ sung test cho `GET /api/v1/snaps/timeline`, bao phủ:
+1. Không gửi token -> 401.
+2. Token invalid -> 401.
+3. Timeline rỗng -> 200, snaps [], total 0.
+4. Chỉ lấy snaps của current user.
+5. Không lấy snaps của user khác.
+6. Trả expenses kèm categoryName.
+7. amount trả về dạng number.
+8. reactions là mảng rỗng.
+9. Sort createdAt DESC.
+10. Pagination limit/offset.
+11. Filter startDate/endDate.
+12. startDate > endDate -> 400 VALIDATION_ERROR.
+13. Search theo caption.
+14. Soft-deleted snap không xuất hiện.
+15. Response không leak internal fields.
+
+### Test isolation
+Ghi nhận test tiếp tục tuân thủ rule isolation từ T-7.3:
+- Dùng randomUUID/shortId cho dữ liệu test.
+- Không dùng fixed ID/email/username generic.
+- Không cleanup toàn bảng.
+- Cleanup theo IDs do suite tạo.
+- Không xóa toàn bộ folder upload.
+- Không tạo biến test không dùng.
+- Không dùng `any`/`as any`/`eslint-disable`.
+
+### Các lỗi đã gặp trong T-7.4 và cách khắc phục
+1. Circular import model association:
+   - Lỗi: `Expense.belongsTo(Category)` báo `Category` không phải subclass `Sequelize.Model`.
+   - Nguyên nhân: `category.model.ts` import `Expense`, `expense.model.ts` import `Category` gây vòng import.
+   - Cách sửa: xóa `Category.hasMany(Expense)` và xóa import `Expense` trong `category.model.ts`. Chỉ giữ `Expense.belongsTo(Category)` ở `expense.model.ts`.
+
+2. TypeScript association typing:
+   - Lỗi: `Property 'expenses' does not exist on type 'Snap'`.
+   - Nguyên nhân: eager-loaded association chưa khai báo `NonAttribute` trong model.
+   - Cách sửa: thêm `declare expenses?: NonAttribute<Expense[]>` trong `Snap` model và `declare category?: NonAttribute<Category | null>` trong `Expense` model.
+
+3. no-explicit-any warnings:
+   - Lỗi: còn `any` trong `snap.repository.ts` và `snap.routes.spec.ts`.
+   - Cách sửa: dùng type Sequelize phù hợp trong repository; tạo interface test-local cho response body; dùng `Record<string, unknown>` khi kiểm tra field leak.
+
+### Kết quả nghiệm thu
+```txt
+snap routes test riêng: 1 suite passed, 34 tests passed
+full jest runInBand: 11 suites passed, 205 tests passed
+format: pass
+format:check: pass
+lint: pass, không còn warning no-explicit-any
+npm run test: 11 suites passed, 205 tests passed
+build: pass
+```
+

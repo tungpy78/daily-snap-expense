@@ -1,6 +1,7 @@
-import { DataTypes, Model, type Optional, literal } from 'sequelize';
+import { DataTypes, Model, type Optional, type NonAttribute, literal } from 'sequelize';
 import sequelize from '../database/index';
 import { Snap } from './snap.model';
+import { Category } from './category.model';
 
 export interface ExpenseAttributes {
   id: string;
@@ -34,6 +35,7 @@ export class Expense
   declare readonly created_at?: Date;
   declare readonly updated_at?: Date;
   declare readonly deleted_at?: Date | null;
+  declare category?: NonAttribute<Category | null>;
 }
 
 Expense.init(
@@ -93,3 +95,4 @@ Expense.init(
 
 Expense.belongsTo(Snap, { foreignKey: 'snap_id', as: 'snap' });
 Snap.hasMany(Expense, { foreignKey: 'snap_id', as: 'expenses' });
+Expense.belongsTo(Category, { foreignKey: 'category_id', as: 'category' });

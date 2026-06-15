@@ -38,3 +38,39 @@ export interface CreateSnapData {
   caption: string | null;
   is_private: boolean;
 }
+
+export interface TimelineExpenseDto {
+  id: string;
+  amount: number;
+  categoryId: string;
+  categoryName: string | null;
+  note: string | null;
+  date: string;
+}
+
+export interface TimelineSnapDto {
+  id: string;
+  imageUrl: string;
+  caption: string | null;
+  isPrivate: boolean;
+  createdAt: string;
+  expenses: TimelineExpenseDto[];
+  reactions: [];
+}
+
+export interface TimelineQueryDto {
+  startDate?: string;
+  endDate?: string;
+  search?: string;
+  limit: number;
+  offset: number;
+}
+
+export interface TimelineResponseDto {
+  snaps: TimelineSnapDto[];
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+  };
+}

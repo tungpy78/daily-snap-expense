@@ -4,7 +4,12 @@ import { ExpenseService } from '../../expenses/services/expense.service';
 import { CategoryRepository } from '../../categories/repositories/category.repository';
 import { LocalStorageProvider } from '../../../shared/storage/local-storage.provider';
 import { AppError } from '../../../shared/utils/appError';
-import type { CreateSnapDto, CreateSnapResponseDto } from '../dtos/snap.dto';
+import type {
+  CreateSnapDto,
+  CreateSnapResponseDto,
+  TimelineQueryDto,
+  TimelineResponseDto,
+} from '../dtos/snap.dto';
 
 export class SnapService {
   /**
@@ -115,5 +120,46 @@ export class SnapService {
       // Re-throw the exact error
       throw error;
     }
+  }
+
+  /**
+   * Retrieves user snaps timeline with pagination, date filtering, and search.
+   * Maps database models to clean client-safe DTOs.
+   */
+  public static async getTimeline(
+    userId: string,
+    query: TimelineQueryDto,
+  ): Promise<TimelineResponseDto> {
+    const { rows: snaps, count: total } = await SnapRepository.findTimelineByUser(userId, query);
+
+    const timelineSnaps = snaps.map((snap) => {
+      const expenses = (snap.expenses ?? []).map((expense) => ({
+        id: expense.id,
+        amount: Number(expense.amount),
+        categoryId: expense.category_id,
+        categoryName: expense.category?.name ?? null,
+        note: expense.note,
+        date: expense.date,
+      }));
+
+      return {
+        id: snap.id,
+        imageUrl: snap.image_url,
+        caption: snap.caption,
+        isPrivate: snap.is_private,
+        createdAt: snap.created_at ? snap.created_at.toISOString() : new Date().toISOString(),
+        expenses,
+        reactions: [] as [],
+      };
+    });
+
+    return {
+      snaps: timelineSnaps,
+      pagination: {
+        total,
+        limit: query.limit,
+        offset: query.offset,
+      },
+    };
   }
 }

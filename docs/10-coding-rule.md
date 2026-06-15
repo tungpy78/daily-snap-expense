@@ -152,3 +152,12 @@ Tuân thủ mô hình phân tầng **Layered Architecture**:
 ### Logic Nghiệp vụ & Xử lý lỗi (Validation & Rollback)
 * **Zod Preprocess & Default**: Khi thiết kế Zod preprocess kết hợp với giá trị mặc định (`.default()`), tuyệt đối không return `undefined` cho các giá trị không hợp lệ (invalid value) vì điều này sẽ khiến Zod tự động kích hoạt giá trị default và bỏ qua lỗi. Phải giữ nguyên giá trị không hợp lệ để Zod thực hiện báo lỗi validation chuẩn.
 * **Kiểm thử Rollback File**: Với kịch bản test rollback upload file, nếu muốn kiểm tra hàm `deleteImage` được gọi khi có lỗi phát sinh sau đó, thì lỗi mock/thực tế phải xảy ra tại thời điểm hoặc sau khi file đã được upload thành công lên disk (để đảm bảo có file thực sự cần cleanup).
+
+### Tránh lỗi import vòng và Typing trong Sequelize Models
+* **Tránh association hai chiều gây circular import**: Khi thêm Sequelize association để eager load, tránh tạo association hai chiều trong nhiều model file nếu gây circular import. Nếu model A cần `belongsTo` model B, ưu tiên chỉ đặt association cần thiết ở một chiều nếu task không cần chiều ngược lại. Không import runtime model chỉ để khai báo association không dùng.
+* **Khai báo type cho eager-loaded association**: Với eager-loaded association, phải khai báo type `NonAttribute` trong Sequelize model (ví dụ `declare expenses?: NonAttribute<Expense[]>`).
+* **Sử dụng type-only import**: Dùng `import type` cho association type-only để tránh circular import runtime.
+
+### Ràng buộc về kiểu dữ liệu (Strict Typing)
+* **Tuyệt đối không dùng any**: Không dùng `any` hoặc `as any` trong repository, service, controller, hay mã nguồn test. Sử dụng kiểu dữ liệu phù hợp của Sequelize, Zod hoặc TypeScript interface.
+* **Typing cho phản hồi kiểm thử (Test Response Body)**: Khi kiểm tra phản hồi từ API trong test (như kiểm tra các trường bị leak), hãy định nghĩa interface test-local hoặc dùng `Record<string, unknown>` thay vì ép kiểu qua `any`.

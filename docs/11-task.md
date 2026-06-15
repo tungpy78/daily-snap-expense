@@ -248,7 +248,7 @@
     *   **Module ảnh hưởng**: Snap Module
     *   **Test**: Chạy integration test kiểm tra timeline trả về không có snap bị xóa mềm.
     *   **Dependency**: T-7.3
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-7.5**: API Xóa Snap (`DELETE /api/v1/snaps/:id` - Soft Delete)
     *   **Mục tiêu**: Ẩn snap khỏi dòng thời gian mà không làm mất dữ liệu chi tiêu liên quan.
     *   **Mô tả**: Cập nhật `deleted_at = NOW` cho snap. **Không** cập nhật xóa mềm các expense liên kết để giữ lại số liệu chi tiêu và thống kê.

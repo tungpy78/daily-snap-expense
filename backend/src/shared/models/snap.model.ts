@@ -1,6 +1,7 @@
-import { DataTypes, Model, type Optional } from 'sequelize';
+import { DataTypes, Model, type Optional, type NonAttribute } from 'sequelize';
 import sequelize from '../database/index';
 import { User } from './user.model';
+import type { Expense } from './expense.model';
 
 export interface SnapAttributes {
   id: string;
@@ -27,6 +28,7 @@ export class Snap extends Model<SnapAttributes, SnapCreationAttributes> implemen
   declare readonly created_at?: Date;
   declare readonly updated_at?: Date;
   declare readonly deleted_at?: Date | null;
+  declare expenses?: NonAttribute<Expense[]>;
 }
 
 Snap.init(

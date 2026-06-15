@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { SnapService } from '../services/snap.service';
 import { AppError } from '../../../shared/utils/appError';
+import type { TimelineQueryDto } from '../dtos/snap.dto';
 
 export class SnapController {
   /**
@@ -22,6 +23,29 @@ export class SnapController {
       const responseData = await SnapService.createSnap(userId, req.file, req.body);
 
       res.status(201).json({
+        success: true,
+        data: responseData,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Controller action for GET /api/v1/snaps/timeline.
+   * Delegates query parsing and retrieval to SnapService and returns 200 OK.
+   */
+  public static async getTimeline(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user || !req.user.id) {
+        throw new AppError('Bạn chưa xác thực. Vui lòng đăng nhập.', 401, 'UNAUTHORIZED');
+      }
+
+      const userId = req.user.id;
+      const query = req.query as unknown as TimelineQueryDto;
+      const responseData = await SnapService.getTimeline(userId, query);
+
+      res.status(200).json({
         success: true,
         data: responseData,
       });
