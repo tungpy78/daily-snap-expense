@@ -273,7 +273,7 @@
     *   **Module ảnh hưởng**: Friendship Module
     *   **Test**: Gửi request thành công. Thử gửi lại lần 2 nhận về lỗi trùng lặp (400 Bad Request).
     *   **Dependency**: T-8.1, T-3.6
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-8.3**: API Phản hồi yêu cầu kết bạn (`PUT /api/v1/friends/request/:id`)
     *   **Mục tiêu**: Xác nhận hoặc từ chối kết bạn.
     *   **Mô tả**: Cập nhật trạng thái thành `ACCEPTED` hoặc `DECLINED`.

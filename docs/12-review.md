@@ -3120,5 +3120,147 @@ test: 11 suites passed, 214 tests passed
 build: pass
 ```
 
+---
+
+## Review: T-8.2 - API Gửi lời mời kết bạn (POST /api/v1/friends/request)
+
+### Date
+2026-06-16
+
+### Tóm tắt triển khai
+Đã triển khai hoàn thành endpoint gửi lời mời kết bạn bảo vệ qua `authMiddleware`:
+`POST /api/v1/friends/request`
+
+Route flow:
+`Route -> authMiddleware -> validateRequest(sendFriendRequestSchema) -> FriendshipController.sendFriendRequest -> FriendshipService.sendFriendRequest -> FriendshipRepository -> Model/Database`
+
+Các file chính đã tạo/cập nhật:
+- `src/shared/models/friendship.model.ts`
+- `src/modules/friendships/dtos/friendship.dto.ts`
+- `src/modules/friendships/validators/friendship.validator.ts`
+- `src/modules/friendships/repositories/friendship.repository.ts`
+- `src/modules/friendships/services/friendship.service.ts`
+- `src/modules/friendships/controllers/friendship.controller.ts`
+- `src/modules/friendships/routes/friendship.routes.ts`
+- `src/modules/friendships/routes/friendship.routes.spec.ts`
+- `src/routes/index.ts`
+
+Cam kết:
+- Không tạo migration mới.
+- Không sửa migration cũ.
+- Không sửa `.env`.
+- Không sửa `app.ts`.
+
+### API behavior
+Endpoint:
+`POST /api/v1/friends/request`
+
+Request body:
+```json
+{
+  "receiverIdentity": "vietanh@example.com"
+}
+```
+`receiverIdentity` hỗ trợ email hoặc username.
+
+Success khi gửi mới:
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Đã gửi lời mời kết bạn thành công."
+  }
+}
+```
+
+Success khi auto-accept pending ngược chiều:
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Hai bạn đã trở thành bạn bè."
+  }
+}
+```
+
+Error cases:
+```txt
+400 VALIDATION_ERROR nếu receiverIdentity thiếu/rỗng/quá 100 ký tự
+400 SENDER_AND_RECEIVER_ARE_SAME nếu tự gửi cho chính mình
+404 USER_NOT_FOUND nếu receiverIdentity không tìm thấy user active
+400 FRIEND_REQUEST_ALREADY_SENT nếu đã có pending cùng chiều
+400 ALREADY_FRIENDS nếu 2 user đã accepted ở bất kỳ chiều nào
+```
+
+### Business logic
+Được triển khai trong `FriendshipService.sendFriendRequest`:
+1. Trim `receiverIdentity`.
+2. Tìm receiver theo email hoặc username.
+3. Không cho gửi cho chính mình.
+4. Kiểm tra friendship giữa 2 user ở cả hai chiều.
+5. Nếu đã accepted bất kỳ chiều nào -> `ALREADY_FRIENDS` (400).
+6. Nếu pending cùng chiều -> `FRIEND_REQUEST_ALREADY_SENT` (400).
+7. Nếu pending ngược chiều -> update thành `accepted` và trả message auto-accept.
+8. Nếu rejected cùng chiều -> update lại `pending`.
+9. Nếu rejected ngược chiều -> đảo sender/receiver sang chiều hiện tại và update status `pending`.
+10. Nếu chưa có record -> tạo mới `pending`.
+
+Service kiểm soát hoàn toàn quan hệ 2 chiều để tránh một cặp user có nhiều bản ghi ngược chiều không cần thiết trong database.
+
+### Repository / Model
+- Tạo `Friendship` model cho bảng `friendships`.
+- Không dùng paranoid vì bảng không có `deleted_at`.
+- Repository xử lý tìm user theo email/username.
+- Repository tìm friendship giữa 2 user ở cả hai chiều.
+- Repository hỗ trợ các thao tác ghi: `create`, `update`, `update direction status`.
+- Service không gọi Sequelize model trực tiếp.
+
+### Test cases
+Bổ sung integration tests đầy đủ cho `POST /api/v1/friends/request`, bao phủ:
+1. Không gửi token -> 401.
+2. Token invalid -> 401.
+3. `receiverIdentity` missing -> 400 `VALIDATION_ERROR`.
+4. `receiverIdentity` rỗng hoặc chỉ space -> 400 `VALIDATION_ERROR`.
+5. `receiverIdentity` quá 100 ký tự -> 400 `VALIDATION_ERROR`.
+6. `receiverIdentity` không tồn tại -> 404 `USER_NOT_FOUND`.
+7. Tự gửi cho chính mình bằng email -> 400 `SENDER_AND_RECEIVER_ARE_SAME`.
+8. Tự gửi cho chính mình bằng username -> 400 `SENDER_AND_RECEIVER_ARE_SAME`.
+9. Gửi request thành công bằng email -> 200 và tạo pending đúng `sender_id`/`receiver_id`.
+10. Gửi request thành công bằng username -> 200.
+11. Gửi trùng pending cùng chiều -> 400 `FRIEND_REQUEST_ALREADY_SENT`.
+12. Đã accepted bất kỳ chiều nào -> 400 `ALREADY_FRIENDS`.
+13. Pending ngược chiều -> auto accept, status `accepted`.
+14. Rejected cùng chiều -> update lại `pending`, không tạo duplicate.
+15. Rejected ngược chiều -> đảo sender/receiver sang chiều hiện tại, status `pending`, không tạo duplicate.
+
+### Test isolation
+Mã kiểm thử tuân thủ tuyệt đối các nguyên tắc cô lập dữ liệu:
+- Dùng `randomUUID` cho username/email.
+- Không dùng fixed email/username generic.
+- Cleanup theo IDs do suite tạo.
+- Không cleanup toàn bảng.
+- Cleanup đúng thứ tự khóa ngoại: `friendships` -> `users`.
+- Không dùng `any`/`as any`.
+- Không dùng `eslint-disable`.
+- Không tạo biến test không dùng.
+
+### Lỗi đã gặp và cách khắc phục
+1. Compile fail do biến test không dùng:
+   - Lỗi: `TS6133: 'tokenC' is declared but its value is never read.`
+   - Cách sửa: xóa hoàn toàn khai báo và phần gán `tokenC` trong `friendship.routes.spec.ts` vì không được sử dụng trong các case test nào.
+   - Không dùng `void tokenC` hay comment `eslint-disable`.
+
+### Kết quả nghiệm thu
+```txt
+friendship routes test riêng: 1 suite passed, 15 tests passed
+full jest runInBand: 12 suites passed, 229 tests passed
+format: pass
+format:check: pass
+lint: pass, không warning no-explicit-any
+npm run test: 12 suites passed, 229 tests passed
+build: pass
+```
+
+
 
 
