@@ -8,6 +8,7 @@ import type {
   ExpenseListResponseDto,
   UpdateExpenseDto,
   UpdateExpenseData,
+  DeleteExpenseResponseDto,
 } from '../dtos/expense.dto';
 
 export class ExpenseService {
@@ -174,6 +175,35 @@ export class ExpenseService {
       createdAt: updatedExpense.created_at
         ? updatedExpense.created_at.toISOString()
         : new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Soft deletes an existing manual expense after validation.
+   */
+  public static async deleteExpense(
+    userId: string,
+    expenseId: string,
+  ): Promise<DeleteExpenseResponseDto> {
+    // 1. Find existing expense
+    const expense = await ExpenseRepository.findById(expenseId);
+    if (!expense) {
+      throw new AppError('Khoản chi tiêu không tồn tại.', 404, 'EXPENSE_NOT_FOUND');
+    }
+
+    // 2. Check ownership
+    if (expense.user_id !== userId) {
+      throw new AppError('Bạn không có quyền xóa khoản chi tiêu này.', 403, 'FORBIDDEN');
+    }
+
+    // 3. Perform soft delete
+    const result = await ExpenseRepository.deleteById(expenseId);
+    if (result === 0) {
+      throw new AppError('Khoản chi tiêu không tồn tại.', 404, 'EXPENSE_NOT_FOUND');
+    }
+
+    return {
+      message: 'Đã xóa khoản chi tiêu thành công.',
     };
   }
 }

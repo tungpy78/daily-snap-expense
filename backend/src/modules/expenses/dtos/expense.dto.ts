@@ -73,3 +73,7 @@ export interface UpdateExpenseData {
   date?: string;
   snap_id?: string | null;
 }
+
+export interface DeleteExpenseResponseDto {
+  message: string;
+}

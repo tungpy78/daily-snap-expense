@@ -216,7 +216,7 @@
     *   **Module ảnh hưởng**: Expense Module
     *   **Test**: Gọi API xóa thành công, sau đó kiểm tra API list expenses không còn hiển thị khoản chi này nữa.
     *   **Dependency**: T-6.3
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 
 ---
 

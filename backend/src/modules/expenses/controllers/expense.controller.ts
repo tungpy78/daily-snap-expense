@@ -83,4 +83,31 @@ export class ExpenseController {
       next(error);
     }
   }
+
+  /**
+   * Controller action for DELETE /api/v1/expenses/:id.
+   * Soft deletes an existing manual expense for the authenticated user.
+   */
+  public static async deleteExpense(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    try {
+      if (!req.user || !req.user.id) {
+        throw new AppError('Bạn chưa xác thực. Vui lòng đăng nhập.', 401, 'UNAUTHORIZED');
+      }
+
+      const userId = req.user.id;
+      const expenseId = req.params.id;
+      const result = await ExpenseService.deleteExpense(userId, expenseId);
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

@@ -2291,3 +2291,148 @@ lint: pass
 test: 9 suites passed, 158 tests passed
 build: pass
 ```
+
+---
+
+## Review: T-6.5 - API Xóa chi tiêu
+
+### Date
+2026-06-15
+
+### Tóm tắt triển khai
+* Đã thêm endpoint:
+```txt
+DELETE /api/v1/expenses/:id
+```
+* Endpoint protected bằng `authMiddleware`.
+* Có validation bằng `validateRequest(deleteExpenseSchema)`.
+* API cho phép user xóa mềm expense do chính user sở hữu.
+* Không hard delete.
+* Không tạo migration mới.
+* Không tạo API mới ngoài DELETE expense.
+* Không tạo Snap model/repository/service.
+
+### Request
+Params:
+```txt
+id: UUID, required
+```
+Body:
+```txt
+Không sử dụng.
+```
+Nếu `id` sai UUID:
+```txt
+400 VALIDATION_ERROR
+```
+
+### Response
+Response thành công:
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Đã xóa khoản chi tiêu thành công."
+  }
+}
+```
+
+### Kiến trúc
+Ghi nhận tuân thủ luồng:
+```txt
+Route -> authMiddleware -> validateRequest -> Controller -> Service -> Repository -> Model/Database
+```
+Trong đó:
+* Route gắn `authMiddleware` và `validateRequest(deleteExpenseSchema)`.
+* Controller lấy `req.user.id`, `params.id`, gọi service.
+* Service kiểm tra expense tồn tại, kiểm tra quyền sở hữu, gọi repository để xóa.
+* Repository là tầng duy nhất gọi `Expense.destroy`.
+* Service không gọi `Expense` model trực tiếp.
+* Service không gọi `expense.destroy()` trực tiếp.
+
+### Files đã sửa
+Ghi nhận các file đã mở rộng:
+```txt
+src/modules/expenses/dtos/expense.dto.ts
+src/modules/expenses/validators/expense.validator.ts
+src/modules/expenses/repositories/expense.repository.ts
+src/modules/expenses/services/expense.service.ts
+src/modules/expenses/controllers/expense.controller.ts
+src/modules/expenses/routes/expense.routes.ts
+src/modules/expenses/routes/expense.routes.spec.ts
+```
+
+### DTO
+Ghi nhận đã thêm:
+```txt
+DeleteExpenseResponseDto
+```
+
+### Validator
+Ghi nhận đã thêm:
+```txt
+deleteExpenseSchema
+```
+Schema validate:
+```txt
+params.id
+```
+`params.id` phải là UUID.
+
+### Repository
+Ghi nhận đã thêm:
+```txt
+deleteById
+```
+Repository gọi:
+```txt
+Expense.destroy({ where: { id } })
+```
+Vì `Expense` model đang `paranoid: true`, thao tác này là soft delete và cập nhật `deleted_at`.
+
+### Service logic
+Ghi nhận flow xóa:
+1. Tìm expense bằng repository `findById`.
+2. Nếu không tồn tại hoặc đã soft delete -> `404 EXPENSE_NOT_FOUND`.
+3. Nếu expense không thuộc user hiện tại -> `403 FORBIDDEN`.
+4. Gọi repository `deleteById`.
+5. Nếu kết quả delete là `0`, trả `404 EXPENSE_NOT_FOUND`.
+6. Trả message thành công.
+
+### Soft delete rule
+Ghi nhận API code không bật:
+```txt
+paranoid: false
+```
+`paranoid: false` chỉ được dùng trong integration test để verify DB sau khi xóa.
+
+Sau khi xóa:
+* Expense không còn xuất hiện trong `GET /api/v1/expenses`.
+* `pagination.total` không tính expense đã soft delete.
+* Bản ghi vẫn tồn tại trong DB khi query với `paranoid: false`.
+* `deleted_at` có timestamp.
+
+### Test cases
+Ghi nhận integration tests đã bao phủ:
+1. Không có Authorization header -> 401 `UNAUTHORIZED`.
+2. Token không hợp lệ -> 401 `INVALID_TOKEN`.
+3. `params.id` sai UUID -> 400 `VALIDATION_ERROR`.
+4. Expense không tồn tại -> 404 `EXPENSE_NOT_FOUND`.
+5. User A xóa expense của User B -> 403 `FORBIDDEN`.
+6. Xóa thành công expense hợp lệ -> 200.
+7. Response đúng message: `Đã xóa khoản chi tiêu thành công.`
+8. DB thật sự cập nhật `deleted_at` sau khi xóa.
+9. Gọi DELETE lần thứ 2 với cùng id -> 404 `EXPENSE_NOT_FOUND`.
+10. Expense đã xóa không còn xuất hiện trong `GET /api/v1/expenses`.
+11. `pagination.total` của GET list không tính expense đã soft delete.
+12. Không hard delete: test dùng `paranoid: false` để xác nhận bản ghi vẫn còn trong DB nhưng có `deleted_at`.
+13. Cleanup sạch dữ liệu test.
+
+### Kết quả nghiệm thu
+```txt
+format: pass
+format:check: pass
+lint: pass
+test: 9 suites passed, 166 tests passed
+build: pass
+```

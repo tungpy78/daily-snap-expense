@@ -6,6 +6,7 @@ import {
   createExpenseSchema,
   listExpensesSchema,
   updateExpenseSchema,
+  deleteExpenseSchema,
 } from '../validators/expense.validator';
 
 const router = Router();
@@ -27,6 +28,14 @@ router.put(
   authMiddleware,
   validateRequest(updateExpenseSchema),
   ExpenseController.updateExpense,
+);
+
+// DELETE /api/v1/expenses/:id - Soft delete an existing expense
+router.delete(
+  '/:id',
+  authMiddleware,
+  validateRequest(deleteExpenseSchema),
+  ExpenseController.deleteExpense,
 );
 
 export default router;

@@ -1009,4 +1009,137 @@ describe('Expense Integration Tests', () => {
       expect(dbExpense!.date).toBe('2026-06-15');
     });
   });
+
+  describe('DELETE /api/v1/expenses/:id', () => {
+    let user1Expense: Expense;
+    let user2Expense: Expense;
+
+    beforeEach(async () => {
+      // Seed test expenses specifically for DELETE tests
+      // Clean up previous test expenses to avoid pollution
+      await Expense.destroy({
+        where: {},
+        force: true,
+      });
+
+      user1Expense = await Expense.create({
+        user_id: user1.id,
+        category_id: user1Category.id,
+        amount: 35000,
+        note: 'User 1 expense to delete',
+        date: '2026-06-14',
+      });
+
+      user2Expense = await Expense.create({
+        user_id: user2.id,
+        category_id: user2Category.id,
+        amount: 60000,
+        note: 'User 2 expense to delete',
+        date: '2026-06-14',
+      });
+    });
+
+    it('should return HTTP 401 when Authorization header is missing', async () => {
+      const response = await request(app).delete(`/api/v1/expenses/${user1Expense.id}`);
+
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'UNAUTHORIZED');
+    });
+
+    it('should return HTTP 401 when token is invalid', async () => {
+      const response = await request(app)
+        .delete(`/api/v1/expenses/${user1Expense.id}`)
+        .set('Authorization', 'Bearer invalid.token.value');
+
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'INVALID_TOKEN');
+    });
+
+    it('should return HTTP 400 when params.id is not a valid UUID', async () => {
+      const response = await request(app)
+        .delete('/api/v1/expenses/not-a-uuid')
+        .set('Authorization', `Bearer ${token1}`);
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+
+    it('should return HTTP 404 when expense does not exist', async () => {
+      const nonExistentId = '99999999-9999-9999-9999-999999999999';
+      const response = await request(app)
+        .delete(`/api/v1/expenses/${nonExistentId}`)
+        .set('Authorization', `Bearer ${token1}`);
+
+      expect(response.status).toBe(404);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'EXPENSE_NOT_FOUND');
+    });
+
+    it("should return HTTP 403 when User A tries to delete User B's expense", async () => {
+      const response = await request(app)
+        .delete(`/api/v1/expenses/${user2Expense.id}`)
+        .set('Authorization', `Bearer ${token1}`);
+
+      expect(response.status).toBe(403);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'FORBIDDEN');
+    });
+
+    it('should soft delete expense successfully', async () => {
+      const response = await request(app)
+        .delete(`/api/v1/expenses/${user1Expense.id}`)
+        .set('Authorization', `Bearer ${token1}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body.data).toHaveProperty('message', 'Đã xóa khoản chi tiêu thành công.');
+
+      // Check soft deleted DB state using paranoid: false
+      const deletedInDb = await Expense.findByPk(user1Expense.id, {
+        paranoid: false,
+      });
+      expect(deletedInDb).toBeDefined();
+      expect(deletedInDb!.deleted_at).not.toBeNull();
+    });
+
+    it('should return 404 when attempting to delete the same expense again', async () => {
+      // First delete
+      await request(app)
+        .delete(`/api/v1/expenses/${user1Expense.id}`)
+        .set('Authorization', `Bearer ${token1}`);
+
+      // Second delete
+      const response = await request(app)
+        .delete(`/api/v1/expenses/${user1Expense.id}`)
+        .set('Authorization', `Bearer ${token1}`);
+
+      expect(response.status).toBe(404);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'EXPENSE_NOT_FOUND');
+    });
+
+    it('should not appear in GET list and pagination total after soft deleting', async () => {
+      // Get initial count (1 active expense for user1 in DB since user2 belongs to user2)
+      const initResponse = await request(app)
+        .get('/api/v1/expenses')
+        .set('Authorization', `Bearer ${token1}`);
+      expect(initResponse.body.data.pagination.total).toBe(1);
+      expect(initResponse.body.data.expenses.length).toBe(1);
+
+      // Soft delete the expense
+      await request(app)
+        .delete(`/api/v1/expenses/${user1Expense.id}`)
+        .set('Authorization', `Bearer ${token1}`);
+
+      // Get list again
+      const afterResponse = await request(app)
+        .get('/api/v1/expenses')
+        .set('Authorization', `Bearer ${token1}`);
+      expect(afterResponse.body.data.pagination.total).toBe(0);
+      expect(afterResponse.body.data.expenses.length).toBe(0);
+    });
+  });
 });

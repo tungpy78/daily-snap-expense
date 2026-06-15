@@ -77,4 +77,13 @@ export class ExpenseRepository {
     await expense.update(data);
     return expense;
   }
+
+  /**
+   * Soft deletes an expense by ID.
+   */
+  public static async deleteById(id: string): Promise<number> {
+    return Expense.destroy({
+      where: { id },
+    });
+  }
 }

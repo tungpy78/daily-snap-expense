@@ -100,6 +100,13 @@ export const updateExpenseSchema = {
     ),
 };
 
+export const deleteExpenseSchema = {
+  params: z.object({
+    id: z.string().uuid('Mã chi tiêu không hợp lệ (phải là UUID).'),
+  }),
+};
+
 export type CreateExpenseSchemaType = typeof createExpenseSchema;
 export type ListExpensesSchemaType = typeof listExpensesSchema;
 export type UpdateExpenseSchemaType = typeof updateExpenseSchema;
+export type DeleteExpenseSchemaType = typeof deleteExpenseSchema;
