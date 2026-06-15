@@ -30,6 +30,9 @@ describe('Expense Integration Tests', () => {
   let user2Category: Category;
   let softDeletedExpenseId: string;
 
+  const testGetSnapId = '11111111-1111-1111-1111-111111111111';
+  const testPutSnapId = '55555555-5555-5555-5555-555555555555';
+
   beforeAll(async () => {
     // Inject mock secrets for integration tests
     process.env.JWT_ACCESS_SECRET = testAccessSecret;
@@ -41,6 +44,9 @@ describe('Expense Integration Tests', () => {
     await Expense.destroy({
       where: {},
       force: true,
+    });
+    await sequelize.query('DELETE FROM snaps WHERE id = ? OR id = ?', {
+      replacements: [testGetSnapId, testPutSnapId],
     });
     await Category.destroy({
       where: { name: testCategoryNames },
@@ -102,6 +108,11 @@ describe('Expense Integration Tests', () => {
       await Expense.destroy({
         where: {},
         force: true,
+      });
+
+      // Clean up snaps
+      await sequelize.query('DELETE FROM snaps WHERE id = ? OR id = ?', {
+        replacements: [testGetSnapId, testPutSnapId],
       });
 
       // Clean up all created categories
@@ -386,6 +397,35 @@ describe('Expense Integration Tests', () => {
       // Clear all expenses so we have a completely clean state for query tests
       await Expense.destroy({ where: {}, force: true });
 
+      // Seed snaps first
+      await sequelize.query(
+        `
+        INSERT INTO snaps (
+          id,
+          user_id,
+          image_url,
+          caption,
+          is_private,
+          created_at,
+          updated_at,
+          deleted_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        {
+          replacements: [
+            testGetSnapId,
+            user1.id,
+            'http://localhost:5001/public/uploads/snaps/test.jpg',
+            'Test snap',
+            true,
+            new Date(),
+            new Date(),
+            null,
+          ],
+        },
+      );
+
       // Seed test expenses for user 1 with deterministic created_at
       await Expense.create({
         user_id: user1.id,
@@ -433,7 +473,7 @@ describe('Expense Integration Tests', () => {
         amount: 50000,
         note: 'Exp E',
         date: '2026-06-13',
-        snap_id: '11111111-1111-1111-1111-111111111111',
+        snap_id: testGetSnapId,
         created_at: new Date('2026-06-15T14:00:00.000Z'),
       });
 
@@ -736,6 +776,13 @@ describe('Expense Integration Tests', () => {
       const notes = seeded.map((item: ExpenseListItemDto) => item.note);
       expect(notes).toEqual(['Exp E', 'Exp D', 'Exp C', 'Exp B', 'Exp A']);
     });
+
+    afterAll(async () => {
+      await Expense.destroy({ where: {}, force: true });
+      await sequelize.query('DELETE FROM snaps WHERE id = ?', {
+        replacements: [testGetSnapId],
+      });
+    });
   });
 
   describe('PUT /api/v1/expenses/:id', () => {
@@ -744,6 +791,35 @@ describe('Expense Integration Tests', () => {
     let softDeletedExpense: Expense;
 
     beforeAll(async () => {
+      // Seed snap first
+      await sequelize.query(
+        `
+        INSERT INTO snaps (
+          id,
+          user_id,
+          image_url,
+          caption,
+          is_private,
+          created_at,
+          updated_at,
+          deleted_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        {
+          replacements: [
+            testPutSnapId,
+            user1.id,
+            'http://localhost:5001/public/uploads/snaps/test.jpg',
+            'Test snap put',
+            true,
+            new Date(),
+            new Date(),
+            null,
+          ],
+        },
+      );
+
       // Seed test expenses specifically for PUT tests
       user1Expense = await Expense.create({
         user_id: user1.id,
@@ -960,7 +1036,7 @@ describe('Expense Integration Tests', () => {
 
     it('should update snapId to null when snapId is null', async () => {
       // First update it to a mock snapId
-      const mockSnapId = '55555555-5555-5555-5555-555555555555';
+      const mockSnapId = testPutSnapId;
       await request(app)
         .put(`/api/v1/expenses/${user1Expense.id}`)
         .set('Authorization', `Bearer ${token1}`)
@@ -1007,6 +1083,13 @@ describe('Expense Integration Tests', () => {
       expect(Number(dbExpense!.amount)).toBe(99999);
       expect(dbExpense!.note).toBe('Updated Note Valid');
       expect(dbExpense!.date).toBe('2026-06-15');
+    });
+
+    afterAll(async () => {
+      await Expense.destroy({ where: {}, force: true });
+      await sequelize.query('DELETE FROM snaps WHERE id = ?', {
+        replacements: [testPutSnapId],
+      });
     });
   });
 

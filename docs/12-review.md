@@ -2436,3 +2436,140 @@ lint: pass
 test: 9 suites passed, 166 tests passed
 build: pass
 ```
+
+---
+
+## Review: T-7.1 - Tạo migration cho bảng snaps (Có soft delete)
+
+### Date
+2026-06-15
+
+### Tóm tắt triển khai
+* Đã tạo migration:
+```txt
+migrations/20260615215000-create-snaps.js
+```
+* Đã tạo bảng:
+```txt
+snaps
+```
+* Bảng `snaps` hỗ trợ soft delete qua cột:
+```txt
+deleted_at
+```
+* Đã bổ sung foreign key:
+```txt
+expenses.snap_id -> snaps.id
+```
+* Không tạo Snap model.
+* Không tạo Snap repository/service/controller/validator.
+* Không tạo API Snap.
+* Không sửa business logic.
+
+### Schema bảng snaps
+Ghi nhận các cột:
+```txt
+id          UUID PRIMARY KEY NOT NULL
+user_id     UUID NOT NULL
+image_url   STRING(255) NOT NULL
+caption     TEXT NULL
+is_private  BOOLEAN NOT NULL DEFAULT true
+created_at  DATE NOT NULL DEFAULT CURRENT_TIMESTAMP
+updated_at  DATE NOT NULL DEFAULT CURRENT_TIMESTAMP
+deleted_at  DATE NULL
+```
+Foreign key:
+```txt
+user_id -> users(id)
+onUpdate: CASCADE
+onDelete: CASCADE
+```
+Index:
+```txt
+snaps_user_id_created_at_index
+columns: user_id, created_at
+```
+
+### Foreign key expenses.snap_id
+Ghi nhận constraint:
+```txt
+expenses_snap_id_fk
+```
+Liên kết:
+```txt
+expenses.snap_id -> snaps.id
+```
+Rule:
+```txt
+onUpdate: CASCADE
+onDelete: SET NULL
+```
+
+### Xử lý dữ liệu orphan snap_id
+Ghi nhận trong migration `up` có xử lý dữ liệu tạm từ các task T-6.x:
+```sql
+UPDATE expenses
+SET snap_id = NULL
+WHERE snap_id IS NOT NULL;
+```
+Lý do:
+* Trước T-7.1, bảng `snaps` chưa tồn tại.
+* Một số expense test/data có thể có `snap_id` dummy UUID.
+* Khi thêm FK, các `snap_id` không tồn tại trong `snaps` sẽ làm migration fail.
+* Vì vậy cần reset orphan `snap_id` về `NULL` trước khi add foreign key.
+
+### Thứ tự migration up
+Ghi nhận thứ tự đúng:
+1. `createTable('snaps')`
+2. `addIndex('snaps', ['user_id', 'created_at'], name: 'snaps_user_id_created_at_index')`
+3. `UPDATE expenses SET snap_id = NULL WHERE snap_id IS NOT NULL`
+4. `addConstraint` `expenses.snap_id -> snaps.id` với name `expenses_snap_id_fk`
+
+### Thứ tự migration down
+Ghi nhận rollback đúng:
+1. Kiểm tra constraint `expenses_snap_id_fk` có tồn tại không
+2. Nếu tồn tại thì `removeConstraint('expenses', 'expenses_snap_id_fk')`
+3. `dropTable('snaps')`
+
+Ghi nhận lỗi đã gặp và đã sửa:
+```txt
+ERROR: Cannot drop index 'snaps_user_id_created_at_index': needed in a foreign key constraint
+```
+Nguyên nhân:
+* MySQL dùng index `snaps_user_id_created_at_index` để hỗ trợ FK `snaps.user_id -> users.id`.
+* Không được remove index này thủ công khi FK còn tồn tại.
+* Khi `dropTable('snaps')`, MySQL tự dọn index/constraint thuộc bảng `snaps`.
+
+Cách sửa:
+```txt
+Bỏ removeIndex trong down.
+Chỉ remove FK expenses_snap_id_fk nếu còn tồn tại, rồi dropTable('snaps').
+```
+
+### Sửa test data sau khi có FK
+Ghi nhận đã sửa `src/modules/expenses/routes/expense.routes.spec.ts` để phù hợp FK mới:
+* Không còn dùng `snapId` dummy UUID không tồn tại.
+* Seed bản ghi trong bảng `snaps` trước khi tạo expense có `snap_id`.
+* Không tạo Snap model.
+* Dùng raw query trong test setup.
+* Cleanup đúng thứ tự:
+  1. Xóa expenses trước.
+  2. Xóa snaps sau.
+  3. Xóa categories/users sau cùng.
+
+Ghi nhận test IDs:
+```txt
+testGetSnapId: 11111111-1111-1111-1111-111111111111
+testPutSnapId: 55555555-5555-5555-5555-555555555555
+
+### Kết quả nghiệm thu
+```txt
+migration undo: pass
+migration migrate lại: pass
+expense test riêng: 1 suite passed, 63 tests passed
+format: pass
+format:check: pass
+lint: pass
+full test: 9 suites passed, 166 tests passed
+build: pass
+```

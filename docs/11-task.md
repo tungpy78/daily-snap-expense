@@ -227,7 +227,7 @@
     *   **Module ảnh hưởng**: DB Module (Migrations)
     *   **Test**: Chạy migration thành công.
     *   **Dependency**: T-2.2
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-7.2**: Tích hợp upload ảnh snap thông qua `LocalStorageProvider`
     *   **Mục tiêu**: Xử lý lưu trữ file ảnh snap an toàn.
     *   **Mô tả**: Sử dụng `StorageService` để lưu trữ ảnh chụp tải lên vào thư mục public của server.
