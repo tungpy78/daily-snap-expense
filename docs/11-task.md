@@ -156,7 +156,7 @@
     *   **Module ảnh hưởng**: DB Module (Migrations)
     *   **Test**: Chạy migration thành công.
     *   **Dependency**: T-2.1
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-5.2**: Viết Seed dữ liệu danh mục mặc định của hệ thống
     *   **Mục tiêu**: Khởi tạo danh mục mặc định cho tất cả user.
     *   **Mô tả**: Seed các danh mục Food, Transport, Shopping, Entertainment, Study, Health, Other vào DB với `user_id = NULL`.

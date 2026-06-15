@@ -1268,3 +1268,57 @@ Nghiệm thu thành công 100% trên máy thật:
 - `npm run build`: pass
 - `npm run dev`: pass
 
+---
+
+## Review: T-5.1 - Tạo migration cho bảng categories
+
+### Date
+2026-06-15
+
+### Summary
+Triển khai file database migration để khởi tạo cấu trúc bảng `categories` nhằm quản lý danh mục chi tiêu mặc định của hệ thống và danh mục tùy chỉnh của từng người dùng.
+
+### Files Changed
+- `backend/src/shared/database/migrations/20260615155500-create-categories.js`
+
+### Schema bảng categories
+Bảng `categories` bao gồm các cột sau:
+- `id`: UUID (Primary Key, Not Null)
+- `user_id`: UUID (Nullable) - Khóa ngoại liên kết tới bảng `users(id)`.
+- `name`: STRING(50) (Not Null) - Tên danh mục.
+- `color`: STRING(7) (Nullable) - Mã màu hex.
+- `icon`: STRING(50) (Nullable) - Tên icon hiển thị.
+- `created_at`: DATE (Not Null, Default: CURRENT_TIMESTAMP)
+- `updated_at`: DATE (Not Null, Default: CURRENT_TIMESTAMP)
+
+### Foreign key
+Ràng buộc trên cột `user_id`:
+- Khóa ngoại tham chiếu đến: `users(id)`
+- `onUpdate`: `CASCADE`
+- `onDelete`: `CASCADE`
+- *Ý nghĩa:* Khi một người dùng bị xóa, các danh mục tùy chỉnh (`user_id != NULL`) của người dùng đó cũng sẽ tự động bị xóa theo. Các danh mục mặc định hệ thống (`user_id = NULL`) không bị ảnh hưởng.
+
+### Index
+Đã tạo index thường trên cột `user_id` của bảng `categories` để tối ưu hóa truy vấn danh mục riêng của người dùng:
+- Tên index: `categories_user_id_index`
+- Không sử dụng unique constraint hay index phức tạp vì không có yêu cầu đặc thù trong docs.
+
+### Down migration
+- Rollback sạch bảng thông qua:
+```js
+await queryInterface.dropTable('categories');
+```
+
+### Kết quả nghiệm thu
+Nghiệm thu thành công 100% các câu lệnh kiểm tra trên máy thật:
+- Migration up: pass (`20260615155500-create-categories.js`)
+- Migration status: pass
+- Migration undo (rollback): pass
+- Migration re-run: pass
+- format: pass
+- format:check: pass
+- lint: pass
+- test: 7 suites passed, 86 tests passed
+- build: pass
+
+
