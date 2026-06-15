@@ -6,6 +6,8 @@ import type {
   ExpenseDto,
   ExpenseListQueryDto,
   ExpenseListResponseDto,
+  UpdateExpenseDto,
+  UpdateExpenseData,
 } from '../dtos/expense.dto';
 
 export class ExpenseService {
@@ -102,6 +104,76 @@ export class ExpenseService {
         limit: query.limit,
         offset: query.offset,
       },
+    };
+  }
+
+  /**
+   * Updates an existing manual expense after validation.
+   */
+  public static async updateExpense(
+    userId: string,
+    expenseId: string,
+    dto: UpdateExpenseDto,
+  ): Promise<ExpenseDto> {
+    // 1. Find existing expense
+    const expense = await ExpenseRepository.findById(expenseId);
+    if (!expense) {
+      throw new AppError('Khoản chi tiêu không tồn tại.', 404, 'EXPENSE_NOT_FOUND');
+    }
+
+    // 2. Check ownership
+    if (expense.user_id !== userId) {
+      throw new AppError('Bạn không có quyền chỉnh sửa khoản chi tiêu này.', 403, 'FORBIDDEN');
+    }
+
+    const updateData: UpdateExpenseData = {};
+
+    // 3. Check and validate categoryId if provided
+    if (dto.categoryId !== undefined) {
+      const category = await CategoryRepository.findById(dto.categoryId);
+      if (!category) {
+        throw new AppError('Danh mục không tồn tại.', 400, 'CATEGORY_NOT_FOUND');
+      }
+      if (category.user_id !== null && category.user_id !== userId) {
+        throw new AppError('Bạn không có quyền sử dụng danh mục này.', 403, 'FORBIDDEN');
+      }
+      updateData.category_id = dto.categoryId;
+    }
+
+    // 4. Normalize and map other fields
+    if (dto.amount !== undefined) {
+      updateData.amount = dto.amount;
+    }
+
+    if (dto.note !== undefined) {
+      updateData.note = dto.note && dto.note.trim() !== '' ? dto.note.trim() : null;
+    }
+
+    if (dto.date !== undefined) {
+      updateData.date = dto.date;
+    }
+
+    if (dto.snapId !== undefined) {
+      updateData.snap_id = dto.snapId || null;
+    }
+
+    // 5. Perform repository update
+    const updatedExpense = await ExpenseRepository.updateById(expenseId, updateData);
+    if (!updatedExpense) {
+      throw new AppError('Khoản chi tiêu không tồn tại.', 404, 'EXPENSE_NOT_FOUND');
+    }
+
+    // 6. Return mapped safe DTO
+    return {
+      id: updatedExpense.id,
+      amount: Number(updatedExpense.amount),
+      categoryId: updatedExpense.category_id,
+      note: updatedExpense.note,
+      date: updatedExpense.date,
+      snapId: updatedExpense.snap_id,
+      createdAt: updatedExpense.created_at
+        ? updatedExpense.created_at.toISOString()
+        : new Date().toISOString(),
     };
   }
 }

@@ -2121,3 +2121,173 @@ expense test riêng: 1 suite passed, 36 tests passed
 full test: 9 suites passed, 139 tests passed
 build: pass
 ```
+
+---
+
+## Review: T-6.4 - API Cập nhật chi tiêu
+
+### Date
+2026-06-15
+
+### Tóm tắt triển khai
+* Đã thêm endpoint:
+```txt
+PUT /api/v1/expenses/:id
+```
+* Endpoint protected bằng `authMiddleware`.
+* Có validation bằng `validateRequest(updateExpenseSchema)`.
+* API cho phép user cập nhật expense do chính user sở hữu.
+* Hỗ trợ partial update.
+* Không tạo migration mới.
+* Không tạo API delete expense.
+* Không tạo Snap model/repository/service.
+
+### Request
+Params:
+```txt
+id: UUID, required
+```
+Body optional fields:
+```txt
+amount?: number > 0
+categoryId?: UUID
+note?: string | null, max 1000
+date?: YYYY-MM-DD
+snapId?: UUID | null
+```
+Ghi nhận rule:
+```txt
+Body rỗng {} -> 400 VALIDATION_ERROR
+```
+
+### Kiến trúc
+Ghi nhận tuân thủ luồng:
+```txt
+Route -> authMiddleware -> validateRequest -> Controller -> Service -> Repository -> Model/Database
+```
+Trong đó:
+* Route gắn `authMiddleware` và `validateRequest(updateExpenseSchema)`.
+* Controller lấy `req.user.id`, `params.id`, validated body rồi gọi service.
+* Service kiểm tra quyền sở hữu expense, kiểm tra category nếu có update `categoryId`, normalize dữ liệu và gọi repository.
+* Repository là tầng duy nhất thao tác trực tiếp với `Expense` Sequelize model.
+* Service không gọi `Expense` model trực tiếp.
+* Service không gọi `expense.save()` trực tiếp.
+
+### Files đã sửa
+Ghi nhận các file đã mở rộng:
+```txt
+src/modules/expenses/dtos/expense.dto.ts
+src/modules/expenses/validators/expense.validator.ts
+src/modules/expenses/repositories/expense.repository.ts
+src/modules/expenses/services/expense.service.ts
+src/modules/expenses/controllers/expense.controller.ts
+src/modules/expenses/routes/expense.routes.ts
+src/modules/expenses/routes/expense.routes.spec.ts
+```
+
+### DTO
+Ghi nhận đã thêm:
+```txt
+UpdateExpenseDto
+UpdateExpenseData
+```
+Không khai báo DTO dùng chung trong service/controller/repository.
+
+### Validator
+Ghi nhận `updateExpenseSchema` validate cả:
+```txt
+params.id
+body
+```
+Các rule chính:
+* `params.id` phải là UUID.
+* `amount` nếu có phải > 0.
+* `categoryId` nếu có phải là UUID.
+* `note` nếu có tối đa 1000 ký tự, có thể null.
+* `date` nếu có phải đúng `YYYY-MM-DD`.
+* `snapId` nếu có phải là UUID hoặc null.
+* Body rỗng không được chấp nhận.
+
+### Repository
+Ghi nhận đã thêm:
+```txt
+findById
+updateById
+```
+Repository chịu trách nhiệm query/update `Expense`.
+Không bật `paranoid: false`, nên expense đã soft delete không được update.
+
+### Service logic
+Ghi nhận flow update:
+1. Tìm expense theo id.
+2. Nếu không tồn tại hoặc đã soft delete -> `404 EXPENSE_NOT_FOUND`.
+3. Nếu expense không thuộc user hiện tại -> `403 FORBIDDEN`.
+4. Nếu update `categoryId`, kiểm tra category:
+   * Không tồn tại -> `400 CATEGORY_NOT_FOUND`.
+   * Custom category của user khác -> `403 FORBIDDEN`.
+   * System category `user_id = null` -> cho phép.
+   * Custom category của chính user -> cho phép.
+5. Normalize:
+   * `note` string được trim.
+   * `note` chuỗi rỗng -> `null`.
+   * `snapId` omitted -> không đổi.
+   * `snapId: null` -> set `snap_id = null`.
+   * `categoryId` -> `category_id`.
+   * `snapId` -> `snap_id`.
+6. Gọi repository update.
+7. Map response sang safe DTO.
+
+### Response DTO
+Response thành công:
+```txt
+id
+amount
+categoryId
+note
+date
+snapId
+createdAt
+```
+Không leak internal fields:
+```txt
+user_id
+category_id
+snap_id
+deleted_at
+updated_at
+```
+`amount` trả về dạng number, không phải DECIMAL string.
+
+### Test cases
+Ghi nhận integration tests đã bao phủ:
+1. Không có Authorization header -> 401 `UNAUTHORIZED`.
+2. Token không hợp lệ -> 401 `INVALID_TOKEN`.
+3. `params.id` sai UUID -> 400 `VALIDATION_ERROR`.
+4. Body rỗng `{}` -> 400 `VALIDATION_ERROR`.
+5. `amount <= 0` -> 400 `VALIDATION_ERROR`.
+6. `categoryId` sai UUID -> 400 `VALIDATION_ERROR`.
+7. `date` sai format `YYYY-MM-DD` -> 400 `VALIDATION_ERROR`.
+8. `snapId` sai UUID -> 400 `VALIDATION_ERROR`.
+9. `note` quá 1000 ký tự -> 400 `VALIDATION_ERROR`.
+10. Expense không tồn tại -> 404 `EXPENSE_NOT_FOUND`.
+11. User A update expense của User B -> 403 `FORBIDDEN`.
+12. Không update được soft deleted expense -> 404 `EXPENSE_NOT_FOUND`.
+13. Update thành công toàn bộ các field hợp lệ -> 200.
+14. Update thành công partial field -> 200.
+15. Update `note` chuỗi rỗng -> `note: null`.
+16. Update `snapId: null` -> `snapId: null`.
+17. Update `categoryId` là system category -> 200.
+18. Update `categoryId` là custom category của chính user -> 200.
+19. Update `categoryId` là custom category của user khác -> 403 `FORBIDDEN`.
+20. Response safe DTO, không leak internal fields.
+21. DB thật sự được cập nhật đúng các field.
+22. Cleanup sạch dữ liệu test.
+
+### Kết quả nghiệm thu
+```txt
+format: pass
+format:check: pass
+lint: pass
+test: 9 suites passed, 158 tests passed
+build: pass
+```

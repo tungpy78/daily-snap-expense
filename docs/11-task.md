@@ -209,7 +209,7 @@
     *   **Module ảnh hưởng**: Expense Module
     *   **Test**: User A sửa chi tiêu của User B nhận về lỗi 403 Forbidden.
     *   **Dependency**: T-6.3
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-6.5**: API Xóa chi tiêu (`DELETE /api/v1/expenses/:id`)
     *   **Mục tiêu**: Xóa mềm khoản chi khỏi hệ thống.
     *   **Mô tả**: Cập nhật trường `deleted_at = NOW`.

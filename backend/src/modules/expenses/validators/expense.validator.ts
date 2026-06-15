@@ -65,5 +65,41 @@ export const listExpensesSchema = {
     ),
 };
 
+export const updateExpenseSchema = {
+  params: z.object({
+    id: z.string().uuid('Mã chi tiêu không hợp lệ (phải là UUID).'),
+  }),
+  body: z
+    .object({
+      amount: z
+        .number({
+          invalid_type_error: 'Số tiền phải là số.',
+        })
+        .positive('Số tiền phải lớn hơn 0.')
+        .optional(),
+      categoryId: z.string().uuid('Mã danh mục không hợp lệ (phải là UUID).').optional(),
+      note: z
+        .string()
+        .trim()
+        .max(1000, 'Ghi chú không được vượt quá 1000 ký tự.')
+        .nullable()
+        .optional(),
+      date: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày phải có định dạng YYYY-MM-DD.')
+        .optional(),
+      snapId: z.string().uuid('Mã snap không hợp lệ (phải là UUID).').nullable().optional(),
+    })
+    .refine(
+      (body) => {
+        return Object.keys(body).length > 0;
+      },
+      {
+        message: 'Yêu cầu ít nhất một trường dữ liệu hợp lệ để cập nhật.',
+      },
+    ),
+};
+
 export type CreateExpenseSchemaType = typeof createExpenseSchema;
 export type ListExpensesSchemaType = typeof listExpensesSchema;
+export type UpdateExpenseSchemaType = typeof updateExpenseSchema;

@@ -737,4 +737,276 @@ describe('Expense Integration Tests', () => {
       expect(notes).toEqual(['Exp E', 'Exp D', 'Exp C', 'Exp B', 'Exp A']);
     });
   });
+
+  describe('PUT /api/v1/expenses/:id', () => {
+    let user1Expense: Expense;
+    let user2Expense: Expense;
+    let softDeletedExpense: Expense;
+
+    beforeAll(async () => {
+      // Seed test expenses specifically for PUT tests
+      user1Expense = await Expense.create({
+        user_id: user1.id,
+        category_id: user1Category.id,
+        amount: 25000,
+        note: 'Original User 1 note',
+        date: '2026-06-14',
+      });
+
+      user2Expense = await Expense.create({
+        user_id: user2.id,
+        category_id: user2Category.id,
+        amount: 50000,
+        note: 'Original User 2 note',
+        date: '2026-06-14',
+      });
+
+      softDeletedExpense = await Expense.create({
+        user_id: user1.id,
+        category_id: user1Category.id,
+        amount: 10000,
+        note: 'Soft deleted note',
+        date: '2026-06-14',
+      });
+      await softDeletedExpense.destroy(); // Soft delete it
+    });
+
+    it('should return HTTP 401 when Authorization header is missing', async () => {
+      const response = await request(app)
+        .put(`/api/v1/expenses/${user1Expense.id}`)
+        .send({ amount: 30000 });
+
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'UNAUTHORIZED');
+    });
+
+    it('should return HTTP 401 when token is invalid', async () => {
+      const response = await request(app)
+        .put(`/api/v1/expenses/${user1Expense.id}`)
+        .set('Authorization', 'Bearer invalid.token.value')
+        .send({ amount: 30000 });
+
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'INVALID_TOKEN');
+    });
+
+    it('should return HTTP 400 when params.id is not a valid UUID', async () => {
+      const response = await request(app)
+        .put('/api/v1/expenses/not-a-uuid')
+        .set('Authorization', `Bearer ${token1}`)
+        .send({ amount: 30000 });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+
+    it('should return HTTP 400 when body is empty', async () => {
+      const response = await request(app)
+        .put(`/api/v1/expenses/${user1Expense.id}`)
+        .set('Authorization', `Bearer ${token1}`)
+        .send({});
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+
+    it('should return HTTP 400 when amount is <= 0', async () => {
+      const response = await request(app)
+        .put(`/api/v1/expenses/${user1Expense.id}`)
+        .set('Authorization', `Bearer ${token1}`)
+        .send({ amount: 0 });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+
+    it('should return HTTP 400 when categoryId is not a valid UUID', async () => {
+      const response = await request(app)
+        .put(`/api/v1/expenses/${user1Expense.id}`)
+        .set('Authorization', `Bearer ${token1}`)
+        .send({ categoryId: 'invalid-uuid' });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+
+    it('should return HTTP 400 when date is in invalid format', async () => {
+      const response = await request(app)
+        .put(`/api/v1/expenses/${user1Expense.id}`)
+        .set('Authorization', `Bearer ${token1}`)
+        .send({ date: '14-06-2026' });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+
+    it('should return HTTP 400 when snapId is in invalid format', async () => {
+      const response = await request(app)
+        .put(`/api/v1/expenses/${user1Expense.id}`)
+        .set('Authorization', `Bearer ${token1}`)
+        .send({ snapId: 'invalid-uuid' });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+
+    it('should return HTTP 400 when note is longer than 1000 characters', async () => {
+      const response = await request(app)
+        .put(`/api/v1/expenses/${user1Expense.id}`)
+        .set('Authorization', `Bearer ${token1}`)
+        .send({ note: 'a'.repeat(1001) });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+
+    it('should return HTTP 404 when expense does not exist', async () => {
+      const nonExistentId = '99999999-9999-9999-9999-999999999999';
+      const response = await request(app)
+        .put(`/api/v1/expenses/${nonExistentId}`)
+        .set('Authorization', `Bearer ${token1}`)
+        .send({ amount: 30000 });
+
+      expect(response.status).toBe(404);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'EXPENSE_NOT_FOUND');
+    });
+
+    it("should return HTTP 403 when User A tries to update User B's expense", async () => {
+      const response = await request(app)
+        .put(`/api/v1/expenses/${user2Expense.id}`)
+        .set('Authorization', `Bearer ${token1}`)
+        .send({ amount: 30000 });
+
+      expect(response.status).toBe(403);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'FORBIDDEN');
+    });
+
+    it('should return HTTP 404 when trying to update a soft deleted expense', async () => {
+      const response = await request(app)
+        .put(`/api/v1/expenses/${softDeletedExpense.id}`)
+        .set('Authorization', `Bearer ${token1}`)
+        .send({ amount: 30000 });
+
+      expect(response.status).toBe(404);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'EXPENSE_NOT_FOUND');
+    });
+
+    it('should return HTTP 403 when categoryId belongs to another user', async () => {
+      const response = await request(app)
+        .put(`/api/v1/expenses/${user1Expense.id}`)
+        .set('Authorization', `Bearer ${token1}`)
+        .send({ categoryId: user2Category.id });
+
+      expect(response.status).toBe(403);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'FORBIDDEN');
+    });
+
+    it('should return HTTP 400 when categoryId does not exist', async () => {
+      const nonExistentCatId = '88888888-8888-8888-8888-888888888888';
+      const response = await request(app)
+        .put(`/api/v1/expenses/${user1Expense.id}`)
+        .set('Authorization', `Bearer ${token1}`)
+        .send({ categoryId: nonExistentCatId });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'CATEGORY_NOT_FOUND');
+    });
+
+    it('should update successfully when using system category', async () => {
+      const response = await request(app)
+        .put(`/api/v1/expenses/${user1Expense.id}`)
+        .set('Authorization', `Bearer ${token1}`)
+        .send({ categoryId: sysCategory.id });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body.data.expense.categoryId).toBe(sysCategory.id);
+    });
+
+    it('should update successfully when using own custom category', async () => {
+      const response = await request(app)
+        .put(`/api/v1/expenses/${user1Expense.id}`)
+        .set('Authorization', `Bearer ${token1}`)
+        .send({ categoryId: user1Category.id });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body.data.expense.categoryId).toBe(user1Category.id);
+    });
+
+    it('should update note to null when note is empty string', async () => {
+      const response = await request(app)
+        .put(`/api/v1/expenses/${user1Expense.id}`)
+        .set('Authorization', `Bearer ${token1}`)
+        .send({ note: '   ' });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.expense.note).toBeNull();
+    });
+
+    it('should update snapId to null when snapId is null', async () => {
+      // First update it to a mock snapId
+      const mockSnapId = '55555555-5555-5555-5555-555555555555';
+      await request(app)
+        .put(`/api/v1/expenses/${user1Expense.id}`)
+        .set('Authorization', `Bearer ${token1}`)
+        .send({ snapId: mockSnapId });
+
+      // Then update it to null
+      const response = await request(app)
+        .put(`/api/v1/expenses/${user1Expense.id}`)
+        .set('Authorization', `Bearer ${token1}`)
+        .send({ snapId: null });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.expense.snapId).toBeNull();
+    });
+
+    it('should update successfully with partial fields and verify DB state', async () => {
+      const response = await request(app)
+        .put(`/api/v1/expenses/${user1Expense.id}`)
+        .set('Authorization', `Bearer ${token1}`)
+        .send({
+          amount: 99999,
+          note: 'Updated Note Valid',
+          date: '2026-06-15',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('success', true);
+
+      const exp = response.body.data.expense;
+      expect(exp.amount).toBe(99999);
+      expect(exp.note).toBe('Updated Note Valid');
+      expect(exp.date).toBe('2026-06-15');
+
+      // Verify no leaked internal database fields
+      expect(exp).not.toHaveProperty('user_id');
+      expect(exp).not.toHaveProperty('category_id');
+      expect(exp).not.toHaveProperty('snap_id');
+      expect(exp).not.toHaveProperty('deleted_at');
+      expect(exp).not.toHaveProperty('updated_at');
+
+      // Verify DB state directly
+      const dbExpense = await Expense.findByPk(user1Expense.id);
+      expect(dbExpense).toBeDefined();
+      expect(Number(dbExpense!.amount)).toBe(99999);
+      expect(dbExpense!.note).toBe('Updated Note Valid');
+      expect(dbExpense!.date).toBe('2026-06-15');
+    });
+  });
 });

@@ -1,6 +1,10 @@
 import { Op, type WhereOptions } from 'sequelize';
 import { Expense, type ExpenseAttributes } from '../../../shared/models/expense.model';
-import type { CreateExpenseData, ExpenseListQueryDto } from '../dtos/expense.dto';
+import type {
+  CreateExpenseData,
+  ExpenseListQueryDto,
+  UpdateExpenseData,
+} from '../dtos/expense.dto';
 
 export class ExpenseRepository {
   /**
@@ -53,5 +57,24 @@ export class ExpenseRepository {
         ['id', 'DESC'],
       ],
     });
+  }
+
+  /**
+   * Finds a single expense by ID.
+   */
+  public static async findById(id: string): Promise<Expense | null> {
+    return Expense.findByPk(id);
+  }
+
+  /**
+   * Updates an expense by ID.
+   */
+  public static async updateById(id: string, data: UpdateExpenseData): Promise<Expense | null> {
+    const expense = await Expense.findByPk(id);
+    if (!expense) {
+      return null;
+    }
+    await expense.update(data);
+    return expense;
   }
 }

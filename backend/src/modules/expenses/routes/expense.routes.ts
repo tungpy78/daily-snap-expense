@@ -2,7 +2,11 @@ import { Router } from 'express';
 import { ExpenseController } from '../controllers/expense.controller';
 import { authMiddleware } from '../../../middlewares/auth.middleware';
 import { validateRequest } from '../../../middlewares/validation.middleware';
-import { createExpenseSchema, listExpensesSchema } from '../validators/expense.validator';
+import {
+  createExpenseSchema,
+  listExpensesSchema,
+  updateExpenseSchema,
+} from '../validators/expense.validator';
 
 const router = Router();
 
@@ -15,6 +19,14 @@ router.post(
   authMiddleware,
   validateRequest(createExpenseSchema),
   ExpenseController.createExpense,
+);
+
+// PUT /api/v1/expenses/:id - Update an existing expense
+router.put(
+  '/:id',
+  authMiddleware,
+  validateRequest(updateExpenseSchema),
+  ExpenseController.updateExpense,
 );
 
 export default router;

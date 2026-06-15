@@ -57,3 +57,19 @@ export interface ExpenseListResponseDto {
     offset: number;
   };
 }
+
+export interface UpdateExpenseDto {
+  amount?: number;
+  categoryId?: string;
+  note?: string | null;
+  date?: string;
+  snapId?: string | null;
+}
+
+export interface UpdateExpenseData {
+  amount?: number;
+  category_id?: string;
+  note?: string | null;
+  date?: string;
+  snap_id?: string | null;
+}

@@ -54,4 +54,33 @@ export class ExpenseController {
       next(error);
     }
   }
+
+  /**
+   * Controller action for PUT /api/v1/expenses/:id.
+   * Updates an existing manual expense for the authenticated user.
+   */
+  public static async updateExpense(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    try {
+      if (!req.user || !req.user.id) {
+        throw new AppError('Bạn chưa xác thực. Vui lòng đăng nhập.', 401, 'UNAUTHORIZED');
+      }
+
+      const userId = req.user.id;
+      const expenseId = req.params.id;
+      const expense = await ExpenseService.updateExpense(userId, expenseId, req.body);
+
+      res.status(200).json({
+        success: true,
+        data: {
+          expense,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
