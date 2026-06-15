@@ -32,6 +32,7 @@ describe('Expense Integration Tests', () => {
 
   const testGetSnapId = '11111111-1111-1111-1111-111111111111';
   const testPutSnapId = '55555555-5555-5555-5555-555555555555';
+  const testDeletedSnapId = '22222222-2222-2222-2222-222222222222';
 
   beforeAll(async () => {
     // Inject mock secrets for integration tests
@@ -41,8 +42,8 @@ describe('Expense Integration Tests', () => {
     process.env.JWT_REFRESH_EXPIRES_IN = '7d';
 
     // Clean up stale data from previous interrupted runs (FK-safe order: snaps -> categories -> users)
-    await sequelize.query('DELETE FROM snaps WHERE id = ? OR id = ?', {
-      replacements: [testGetSnapId, testPutSnapId],
+    await sequelize.query('DELETE FROM snaps WHERE id = ? OR id = ? OR id = ?', {
+      replacements: [testGetSnapId, testPutSnapId, testDeletedSnapId],
     });
     await Category.destroy({
       where: { name: testCategoryNames },
@@ -107,8 +108,8 @@ describe('Expense Integration Tests', () => {
       });
 
       // Clean up snaps
-      await sequelize.query('DELETE FROM snaps WHERE id = ? OR id = ?', {
-        replacements: [testGetSnapId, testPutSnapId],
+      await sequelize.query('DELETE FROM snaps WHERE id = ? OR id = ? OR id = ?', {
+        replacements: [testGetSnapId, testPutSnapId, testDeletedSnapId],
       });
 
       // Clean up all created categories
@@ -389,6 +390,8 @@ describe('Expense Integration Tests', () => {
   });
 
   describe('GET /api/v1/expenses', () => {
+    const expectedUser1ActiveExpenseCount = 6;
+
     beforeAll(async () => {
       // Clear this suite's expenses for a clean GET test state
       await Expense.destroy({ where: { user_id: [user1.id, user2.id] }, force: true });
@@ -418,6 +421,34 @@ describe('Expense Integration Tests', () => {
             new Date(),
             new Date(),
             null,
+          ],
+        },
+      );
+
+      await sequelize.query(
+        `
+        INSERT INTO snaps (
+          id,
+          user_id,
+          image_url,
+          caption,
+          is_private,
+          created_at,
+          updated_at,
+          deleted_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        {
+          replacements: [
+            testDeletedSnapId,
+            user1.id,
+            'http://localhost:5001/public/uploads/snaps/deleted.jpg',
+            'Deleted snap',
+            true,
+            new Date(),
+            new Date(),
+            new Date(),
           ],
         },
       );
@@ -471,6 +502,16 @@ describe('Expense Integration Tests', () => {
         date: '2026-06-13',
         snap_id: testGetSnapId,
         created_at: new Date('2026-06-15T14:00:00.000Z'),
+      });
+
+      await Expense.create({
+        user_id: user1.id,
+        category_id: sysCategory.id,
+        amount: 70000,
+        note: 'Exp G',
+        date: '2026-06-13',
+        snap_id: testDeletedSnapId,
+        created_at: new Date('2026-06-15T14:30:00.000Z'),
       });
 
       // Soft deleted expense for user 1
@@ -618,10 +659,10 @@ describe('Expense Integration Tests', () => {
 
       const expenses = response.body.data.expenses as ExpenseListItemDto[];
       expect(Array.isArray(expenses)).toBe(true);
-      expect(expenses.length).toBe(5); // 5 active items seeded (POST items were cleared in beforeAll)
+      expect(expenses.length).toBe(expectedUser1ActiveExpenseCount); // 6 active items seeded, including one expense linked to a soft-deleted snap
 
       const pagination = response.body.data.pagination;
-      expect(pagination.total).toBe(5);
+      expect(pagination.total).toBe(expectedUser1ActiveExpenseCount);
       expect(pagination.limit).toBe(20);
       expect(pagination.offset).toBe(0);
 
@@ -669,7 +710,7 @@ describe('Expense Integration Tests', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.data.expenses.length).toBe(3);
-      expect(response.body.data.pagination.total).toBe(5);
+      expect(response.body.data.pagination.total).toBe(expectedUser1ActiveExpenseCount);
       expect(response.body.data.pagination.limit).toBe(3);
       expect(response.body.data.pagination.offset).toBe(2);
     });
@@ -727,8 +768,8 @@ describe('Expense Integration Tests', () => {
 
       expect(response.status).toBe(200);
       const expenses = response.body.data.expenses as ExpenseListItemDto[];
-      expect(expenses.length).toBe(5);
-      expect(response.body.data.pagination.total).toBe(5);
+      expect(expenses.length).toBe(expectedUser1ActiveExpenseCount);
+      expect(response.body.data.pagination.total).toBe(expectedUser1ActiveExpenseCount);
       expect(expenses.some((expense) => expense.id === softDeletedExpenseId)).toBe(false);
     });
 
@@ -744,7 +785,7 @@ describe('Expense Integration Tests', () => {
       expect(itemWithNoSnap!.snapDetails).toBeNull();
     });
 
-    it('should return deleted snapDetails when snapId is not null', async () => {
+    it('should return active snapDetails when snapId is not null and snap is active', async () => {
       const response = await request(app)
         .get('/api/v1/expenses')
         .set('Authorization', `Bearer ${token1}`);
@@ -752,7 +793,22 @@ describe('Expense Integration Tests', () => {
       const expenses = response.body.data.expenses as ExpenseListItemDto[];
       const itemWithSnap = expenses.find((item: ExpenseListItemDto) => item.note === 'Exp E');
       expect(itemWithSnap).toBeDefined();
-      expect(itemWithSnap!.snapId).toBe('11111111-1111-1111-1111-111111111111');
+      expect(itemWithSnap!.snapId).toBe(testGetSnapId);
+      expect(itemWithSnap!.snapDetails).toEqual({
+        snapDeleted: false,
+        imageUrl: 'http://localhost:5001/public/uploads/snaps/test.jpg',
+      });
+    });
+
+    it('should return deleted snapDetails when snapId is not null and snap is soft-deleted', async () => {
+      const response = await request(app)
+        .get('/api/v1/expenses')
+        .set('Authorization', `Bearer ${token1}`);
+
+      const expenses = response.body.data.expenses as ExpenseListItemDto[];
+      const itemWithSnap = expenses.find((item: ExpenseListItemDto) => item.note === 'Exp G');
+      expect(itemWithSnap).toBeDefined();
+      expect(itemWithSnap!.snapId).toBe(testDeletedSnapId);
       expect(itemWithSnap!.snapDetails).toEqual({
         snapDeleted: true,
         imageUrl: null,
@@ -766,17 +822,17 @@ describe('Expense Integration Tests', () => {
 
       const expenses = response.body.data.expenses as ExpenseListItemDto[];
       const seeded = expenses.filter((item: ExpenseListItemDto) =>
-        ['Exp A', 'Exp B', 'Exp C', 'Exp D', 'Exp E'].includes(item.note || ''),
+        ['Exp A', 'Exp B', 'Exp C', 'Exp D', 'Exp E', 'Exp G'].includes(item.note || ''),
       );
 
       const notes = seeded.map((item: ExpenseListItemDto) => item.note);
-      expect(notes).toEqual(['Exp E', 'Exp D', 'Exp C', 'Exp B', 'Exp A']);
+      expect(notes).toEqual(['Exp G', 'Exp E', 'Exp D', 'Exp C', 'Exp B', 'Exp A']);
     });
 
     afterAll(async () => {
       await Expense.destroy({ where: { user_id: [user1.id, user2.id] }, force: true });
-      await sequelize.query('DELETE FROM snaps WHERE id = ?', {
-        replacements: [testGetSnapId],
+      await sequelize.query('DELETE FROM snaps WHERE id = ? OR id = ?', {
+        replacements: [testGetSnapId, testDeletedSnapId],
       });
     });
   });

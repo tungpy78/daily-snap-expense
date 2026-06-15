@@ -2919,3 +2919,149 @@ npm run test: 11 suites passed, 205 tests passed
 build: pass
 ```
 
+---
+
+## Review: T-7.5 - API Xóa Snap (DELETE /api/v1/snaps/:id - Soft Delete)
+
+### Date
+2026-06-16
+
+### Tóm tắt triển khai
+Đã triển khai endpoint:
+```txt
+DELETE /api/v1/snaps/:id
+```
+
+Route protected:
+```txt
+authMiddleware
+```
+
+Route flow:
+```txt
+Route -> authMiddleware -> validateRequest(deleteSnapSchema) -> SnapController.deleteSnap -> SnapService.deleteSnap -> SnapRepository -> Model/Database
+```
+
+Các file chính đã cập nhật:
+- `src/shared/models/expense.model.ts`
+- `src/modules/expenses/repositories/expense.repository.ts`
+- `src/modules/expenses/services/expense.service.ts`
+- `src/modules/expenses/routes/expense.routes.spec.ts`
+- `src/modules/snaps/dtos/snap.dto.ts`
+- `src/modules/snaps/validators/snap.validator.ts`
+- `src/modules/snaps/repositories/snap.repository.ts`
+- `src/modules/snaps/services/snap.service.ts`
+- `src/modules/snaps/controllers/snap.controller.ts`
+- `src/modules/snaps/routes/snap.routes.ts`
+- `src/modules/snaps/routes/snap.routes.spec.ts`
+
+Không tạo migration mới.
+Không sửa `.env`.
+Không sửa `app.ts`.
+Không hard delete Snap.
+Không xóa file ảnh vật lý.
+Không xóa Expense liên quan.
+Không set null `expenses.snap_id`.
+
+### API behavior
+Endpoint:
+```txt
+DELETE /api/v1/snaps/:id
+```
+
+Success `200 OK`:
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Đã xóa khoảnh khắc thành công. Các chi tiêu liên kết vẫn được giữ lại."
+  }
+}
+```
+
+Error cases:
+```txt
+400 VALIDATION_ERROR nếu id không phải UUID
+401 UNAUTHORIZED / INVALID_TOKEN nếu auth lỗi
+403 FORBIDDEN nếu user cố xóa snap của user khác
+404 SNAP_NOT_FOUND nếu snap không tồn tại hoặc đã bị soft-deleted
+```
+
+Soft delete behavior:
+- Snap bị set `deleted_at`.
+- Snap không còn xuất hiện trong `GET /api/v1/snaps/timeline`.
+- Expense liên kết vẫn tồn tại.
+- Expense liên kết vẫn giữ `snap_id`.
+- File `image_url` không bị xóa khỏi disk.
+
+### Expense list behavior sau T-7.5
+Cập nhật `GET /api/v1/expenses` để trả `snapDetails` theo trạng thái thật của Snap:
+- `expense.snap_id` null: `snapDetails = null`
+- `expense.snap_id` có giá trị và snap còn active: `snapDetails = { snapDeleted: false, imageUrl: snap.image_url }`
+- `expense.snap_id` có giá trị nhưng snap đã soft-deleted: `snapDetails = { snapDeleted: true, imageUrl: null }`
+- `expense.snap_id` có giá trị nhưng snap không tồn tại: `snapDetails = { snapDeleted: true, imageUrl: null }`
+
+Repository đã eager load Snap bằng `required: false` và `paranoid: false` để đọc được cả Snap đã soft-deleted.
+
+### DTO / Validator / Service
+- Thêm `DeleteSnapResponseDto`.
+- Thêm `deleteSnapSchema` validate `params.id` UUID.
+- Thêm `SnapRepository.findById` và `deleteById`.
+- Thêm `SnapService.deleteSnap` kiểm tra tồn tại, quyền sở hữu, và soft delete.
+- Thêm `SnapController.deleteSnap`.
+- Thêm route `DELETE /:id`.
+- Cập nhật `ExpenseService` map `snapDetails` theo trạng thái Snap thật.
+
+### Test cases
+Ghi nhận đã bổ sung test cho DELETE Snap:
+1. Không gửi token -> 401.
+2. Token invalid -> 401.
+3. id không phải UUID -> 400 VALIDATION_ERROR.
+4. Snap không tồn tại -> 404 SNAP_NOT_FOUND.
+5. Snap đã soft-deleted -> 404 SNAP_NOT_FOUND.
+6. User A xóa Snap của User B -> 403 FORBIDDEN.
+7. User xóa Snap của chính mình -> 200 OK và message đúng.
+8. Sau khi xóa, Snap có `deleted_at` trong DB khi query paranoid false.
+9. Sau khi xóa, Snap không xuất hiện trong timeline.
+10. Expense liên quan vẫn tồn tại.
+11. Expense liên quan vẫn giữ `snap_id`.
+12. `GET /api/v1/expenses` trả `snapDetails { snapDeleted: true, imageUrl: null }` với expense gắn snap đã soft-deleted.
+
+Ghi nhận đã cập nhật `expense.routes.spec.ts`:
+- Active snap -> `snapDetails { snapDeleted: false, imageUrl }`.
+- Soft-deleted snap -> `snapDetails { snapDeleted: true, imageUrl: null }`.
+- `snap_id` null -> `snapDetails null`.
+- Count active expenses tăng từ 5 lên 6 vì expense liên kết với soft-deleted snap vẫn active theo rule T-7.5.
+
+### Test isolation
+Ghi nhận test vẫn tuân thủ:
+- Không cleanup toàn bảng.
+- Cleanup theo IDs do suite tạo.
+- Cleanup đúng thứ tự FK: expenses -> snaps -> categories -> users.
+- Không dùng fixed ID/email/username generic.
+- Không dùng `any`/`as any`/`eslint-disable`.
+- Không xóa toàn bộ folder upload.
+
+### Các lỗi đã gặp trong T-7.5 và cách khắc phục
+1. Test compile lỗi do TestTimelineResponseBody nằm sai scope:
+   - Lỗi: Cannot find name 'TestTimelineResponseBody' và implicit any trong callback find.
+   - Cách sửa: đưa TestTimelineExpenseResponse, TestTimelineSnapResponse, TestTimelineResponseBody ra top-level scope trong `snap.routes.spec.ts`.
+
+2. Full test fail do expectation cũ của GET /expenses:
+   - Lỗi: Expected 5, Received 6 ở các test default pagination, pagination total, và soft-deleted expense exclusion.
+   - Nguyên nhân: T-7.5 seed thêm expense liên kết với soft-deleted snap; expense đó vẫn active theo rule “xóa Snap không xóa Expense”.
+   - Cách sửa: tạo `expectedUser1ActiveExpenseCount = 6`, thay các hard-code 5 bằng hằng số này, và sửa comment test.
+
+### Kết quả nghiệm thu
+```txt
+expense routes test riêng: 1 suite passed, 64 tests passed
+snap routes test riêng: 1 suite passed, 42 tests passed
+full jest runInBand: 11 suites passed, 214 tests passed
+format: pass
+format:check: pass
+lint: pass, không warning no-explicit-any
+npm run test: 11 suites passed, 214 tests passed
+build: pass
+```
+
+

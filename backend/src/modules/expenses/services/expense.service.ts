@@ -84,10 +84,18 @@ export class ExpenseService {
     const expenses = rows.map((expense) => {
       let snapDetails = null;
       if (expense.snap_id !== null) {
-        snapDetails = {
-          snapDeleted: true,
-          imageUrl: null,
-        };
+        const snap = expense.snap;
+        if (!snap || (snap.deleted_at !== undefined && snap.deleted_at !== null)) {
+          snapDetails = {
+            snapDeleted: true,
+            imageUrl: null,
+          };
+        } else {
+          snapDetails = {
+            snapDeleted: false,
+            imageUrl: snap.image_url,
+          };
+        }
       }
 
       return {

@@ -1,5 +1,6 @@
 import { Op, type WhereOptions, type Transaction } from 'sequelize';
 import { Expense, type ExpenseAttributes } from '../../../shared/models/expense.model';
+import { Snap } from '../../../shared/models/snap.model';
 import type {
   CreateExpenseData,
   ExpenseListQueryDto,
@@ -52,6 +53,15 @@ export class ExpenseRepository {
 
     return Expense.findAndCountAll({
       where: whereClause,
+      include: [
+        {
+          model: Snap,
+          as: 'snap',
+          required: false,
+          paranoid: false,
+          attributes: ['id', 'image_url', 'deleted_at'],
+        },
+      ],
       limit: query.limit,
       offset: query.offset,
       order: [

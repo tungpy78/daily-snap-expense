@@ -255,7 +255,7 @@
     *   **Module ảnh hưởng**: Snap Module
     *   **Test**: Xóa snap thành công $\rightarrow$ kiểm tra timeline không còn snap $\rightarrow$ kiểm tra API list expenses vẫn giữ khoản chi đính kèm với `snapDetails.snapDeleted = true`.
     *   **Dependency**: T-7.4, T-6.5
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 
 ---
 

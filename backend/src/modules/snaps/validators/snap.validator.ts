@@ -139,3 +139,9 @@ export const timelineQuerySchema = {
       },
     ),
 };
+
+export const deleteSnapSchema = {
+  params: z.object({
+    id: z.string().uuid('Mã snap không hợp lệ (phải là UUID).'),
+  }),
+};

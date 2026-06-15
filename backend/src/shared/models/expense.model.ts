@@ -36,6 +36,7 @@ export class Expense
   declare readonly updated_at?: Date;
   declare readonly deleted_at?: Date | null;
   declare category?: NonAttribute<Category | null>;
+  declare snap?: NonAttribute<Snap | null>;
 }
 
 Expense.init(

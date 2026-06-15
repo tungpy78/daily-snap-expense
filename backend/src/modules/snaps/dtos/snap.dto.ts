@@ -74,3 +74,7 @@ export interface TimelineResponseDto {
     offset: number;
   };
 }
+
+export interface DeleteSnapResponseDto {
+  message: string;
+}

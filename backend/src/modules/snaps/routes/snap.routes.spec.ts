@@ -14,6 +14,37 @@ import { tokenService } from '../../auth/services/token.service';
 import { LocalStorageProvider } from '../../../shared/storage/local-storage.provider';
 import { ExpenseService } from '../../expenses/services/expense.service';
 
+interface TestTimelineExpenseResponse {
+  id: string;
+  amount: number;
+  categoryId: string;
+  categoryName: string | null;
+  note: string | null;
+  date: string;
+}
+
+interface TestTimelineSnapResponse {
+  id: string;
+  imageUrl: string;
+  caption: string | null;
+  isPrivate: boolean;
+  createdAt: string;
+  expenses: TestTimelineExpenseResponse[];
+  reactions: unknown[];
+}
+
+interface TestTimelineResponseBody {
+  success: boolean;
+  data: {
+    snaps: TestTimelineSnapResponse[];
+    pagination: {
+      total: number;
+      limit: number;
+      offset: number;
+    };
+  };
+}
+
 describe('Snap Integration Tests', () => {
   // ── Suite-unique identifiers ──────────────────────────────────────────────
   const shortId = randomUUID().replace(/-/g, '').slice(0, 12);
@@ -536,47 +567,6 @@ describe('Snap Integration Tests', () => {
   });
 
   describe('GET /api/v1/snaps/timeline', () => {
-    interface TestTimelineExpenseResponse {
-      id: string;
-      amount: number;
-      categoryId: string;
-      categoryName: string | null;
-      note: string | null;
-      date: string;
-      user_id?: unknown;
-      category_id?: unknown;
-      snap_id?: unknown;
-      deleted_at?: unknown;
-      updated_at?: unknown;
-    }
-
-    interface TestTimelineSnapResponse {
-      id: string;
-      imageUrl: string;
-      caption: string | null;
-      isPrivate: boolean;
-      createdAt: string;
-      expenses: TestTimelineExpenseResponse[];
-      reactions: unknown[];
-      user_id?: unknown;
-      image_url?: unknown;
-      is_private?: unknown;
-      deleted_at?: unknown;
-      updated_at?: unknown;
-    }
-
-    interface TestTimelineResponseBody {
-      success: boolean;
-      data: {
-        snaps: TestTimelineSnapResponse[];
-        pagination: {
-          total: number;
-          limit: number;
-          offset: number;
-        };
-      };
-    }
-
     beforeAll(async () => {
       // Clear any previous snaps/expenses created by POST tests for user1/user2 to have a clean timeline state
       await Expense.destroy({ where: { user_id: createdUserIds }, force: true });
@@ -870,6 +860,208 @@ describe('Snap Integration Tests', () => {
       expect(body.success).toBe(true);
       expect(body.data.snaps).toEqual([]);
       expect(body.data.pagination.total).toBe(0);
+    });
+  });
+
+  describe('DELETE /api/v1/snaps/:id', () => {
+    it('should return HTTP 401 when Authorization header is missing', async () => {
+      const response = await request(app).delete(
+        '/api/v1/snaps/11111111-1111-1111-1111-111111111111',
+      );
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'UNAUTHORIZED');
+    });
+
+    it('should return HTTP 401 when token is invalid', async () => {
+      const response = await request(app)
+        .delete('/api/v1/snaps/11111111-1111-1111-1111-111111111111')
+        .set('Authorization', 'Bearer invalid-token');
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('success', false);
+    });
+
+    it('should return HTTP 400 when id is not a valid UUID', async () => {
+      const response = await request(app)
+        .delete('/api/v1/snaps/not-a-uuid')
+        .set('Authorization', `Bearer ${token1}`);
+      expect(response.status).toBe(400);
+      expect(response.body.error.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('should return HTTP 404 when snap does not exist', async () => {
+      const nonExistentId = randomUUID();
+      const response = await request(app)
+        .delete(`/api/v1/snaps/${nonExistentId}`)
+        .set('Authorization', `Bearer ${token1}`);
+      expect(response.status).toBe(404);
+      expect(response.body.error.code).toBe('SNAP_NOT_FOUND');
+    });
+
+    it("should return HTTP 403 when User A tries to delete User B's snap", async () => {
+      // 1. Create a snap for User B (user2)
+      const snapB = await Snap.create({
+        user_id: user2.id,
+        image_url: 'http://localhost:5001/public/uploads/snaps/snapb.jpg',
+        caption: 'Snap of User B',
+        is_private: false,
+      });
+      createdSnapIds.push(snapB.id);
+
+      // 2. Attempt to delete it using user1's token
+      const response = await request(app)
+        .delete(`/api/v1/snaps/${snapB.id}`)
+        .set('Authorization', `Bearer ${token1}`);
+      expect(response.status).toBe(403);
+      expect(response.body.error.code).toBe('FORBIDDEN');
+    });
+
+    it('should soft delete snap successfully and maintain associated expenses', async () => {
+      // 1. Create a snap for User 1
+      const snap = await Snap.create({
+        user_id: user1.id,
+        image_url: 'http://localhost:5001/public/uploads/snaps/snap1.jpg',
+        caption: 'Snap to delete',
+        is_private: false,
+      });
+      createdSnapIds.push(snap.id);
+
+      // 2. Create associated expense
+      const expense = await Expense.create({
+        user_id: user1.id,
+        snap_id: snap.id,
+        category_id: user1Category.id,
+        amount: 35000,
+        note: 'Seeded expense for snap delete test',
+        date: '2026-06-15',
+      });
+
+      // 3. Delete the snap using user1's token
+      const response = await request(app)
+        .delete(`/api/v1/snaps/${snap.id}`)
+        .set('Authorization', `Bearer ${token1}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.message).toBe(
+        'Đã xóa khoảnh khắc thành công. Các chi tiêu liên kết vẫn được giữ lại.',
+      );
+
+      // 4. Verify snap has deleted_at set in DB (paranoid: false)
+      const snapInDb = await Snap.findOne({
+        where: { id: snap.id },
+        paranoid: false,
+      });
+      expect(snapInDb).not.toBeNull();
+      expect(snapInDb!.deleted_at).not.toBeNull();
+
+      // 5. Verify snap is not returned in timeline API
+      const timelineResponse = await request(app)
+        .get('/api/v1/snaps/timeline')
+        .set('Authorization', `Bearer ${token1}`);
+      const timelineBody = timelineResponse.body as TestTimelineResponseBody;
+      const foundSnap = timelineBody.data.snaps.find((s) => s.id === snap.id);
+      expect(foundSnap).toBeUndefined();
+
+      // 6. Verify associated expense still exists in DB
+      const expenseInDb = await Expense.findByPk(expense.id);
+      expect(expenseInDb).not.toBeNull();
+      expect(expenseInDb!.deleted_at).toBeNull();
+      expect(expenseInDb!.snap_id).toBe(snap.id);
+
+      // 7. Verify GET /api/v1/expenses returns snapDetails with snapDeleted: true
+      const expensesResponse = await request(app)
+        .get('/api/v1/expenses')
+        .set('Authorization', `Bearer ${token1}`);
+
+      interface TestExpenseListItem {
+        id: string;
+        note: string;
+        snapId: string | null;
+        snapDetails: {
+          snapDeleted: boolean;
+          imageUrl: string | null;
+        } | null;
+      }
+
+      const expensesList = expensesResponse.body.data.expenses as TestExpenseListItem[];
+      const foundExpense = expensesList.find((e) => e.id === expense.id);
+      expect(foundExpense).toBeDefined();
+      expect(foundExpense!.snapDetails).toEqual({
+        snapDeleted: true,
+        imageUrl: null,
+      });
+
+      // Cleanup expense
+      await expense.destroy({ force: true });
+    });
+
+    it('should return snapDetails with snapDeleted: false and imageUrl when snap is active', async () => {
+      // 1. Create an active snap
+      const activeSnap = await Snap.create({
+        user_id: user1.id,
+        image_url: 'http://localhost:5001/public/uploads/snaps/activeSnap.jpg',
+        caption: 'Active Snap',
+        is_private: false,
+      });
+      createdSnapIds.push(activeSnap.id);
+
+      // 2. Create associated expense
+      const expense = await Expense.create({
+        user_id: user1.id,
+        snap_id: activeSnap.id,
+        category_id: user1Category.id,
+        amount: 45000,
+        note: 'Seeded expense for active snap test',
+        date: '2026-06-15',
+      });
+
+      // 3. List expenses
+      const response = await request(app)
+        .get('/api/v1/expenses')
+        .set('Authorization', `Bearer ${token1}`);
+
+      interface TestExpenseListItem {
+        id: string;
+        note: string;
+        snapId: string | null;
+        snapDetails: {
+          snapDeleted: boolean;
+          imageUrl: string | null;
+        } | null;
+      }
+
+      const expensesList = response.body.data.expenses as TestExpenseListItem[];
+      const foundExpense = expensesList.find((e) => e.id === expense.id);
+      expect(foundExpense).toBeDefined();
+      expect(foundExpense!.snapDetails).toEqual({
+        snapDeleted: false,
+        imageUrl: 'http://localhost:5001/public/uploads/snaps/activeSnap.jpg',
+      });
+
+      // Cleanup
+      await expense.destroy({ force: true });
+    });
+
+    it('should return 404 when trying to delete a snap that is already soft-deleted', async () => {
+      const snap = await Snap.create({
+        user_id: user1.id,
+        image_url: 'http://localhost:5001/public/uploads/snaps/alreadyDeleted.jpg',
+        caption: 'Already deleted snap',
+        is_private: false,
+      });
+      createdSnapIds.push(snap.id);
+
+      // Soft delete it
+      await snap.destroy();
+
+      // Attempt to delete it again
+      const response = await request(app)
+        .delete(`/api/v1/snaps/${snap.id}`)
+        .set('Authorization', `Bearer ${token1}`);
+
+      expect(response.status).toBe(404);
+      expect(response.body.error.code).toBe('SNAP_NOT_FOUND');
     });
   });
 });

@@ -76,4 +76,20 @@ export class SnapRepository {
       distinct: true,
     });
   }
+
+  /**
+   * Finds a single Snap by its primary key ID (paranoid is true by default).
+   */
+  public static async findById(id: string): Promise<Snap | null> {
+    return Snap.findByPk(id);
+  }
+
+  /**
+   * Soft deletes a Snap record by ID.
+   */
+  public static async deleteById(id: string): Promise<number> {
+    return Snap.destroy({
+      where: { id },
+    });
+  }
 }

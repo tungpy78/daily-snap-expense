@@ -9,6 +9,7 @@ import type {
   CreateSnapResponseDto,
   TimelineQueryDto,
   TimelineResponseDto,
+  DeleteSnapResponseDto,
 } from '../dtos/snap.dto';
 
 export class SnapService {
@@ -160,6 +161,32 @@ export class SnapService {
         limit: query.limit,
         offset: query.offset,
       },
+    };
+  }
+
+  /**
+   * Soft deletes a user snap after performing ownership verification.
+   */
+  public static async deleteSnap(userId: string, snapId: string): Promise<DeleteSnapResponseDto> {
+    // 1. Find existing snap
+    const snap = await SnapRepository.findById(snapId);
+    if (!snap) {
+      throw new AppError('Không tìm thấy khoảnh khắc.', 404, 'SNAP_NOT_FOUND');
+    }
+
+    // 2. Check ownership
+    if (snap.user_id !== userId) {
+      throw new AppError('Bạn không có quyền xóa khoảnh khắc này.', 403, 'FORBIDDEN');
+    }
+
+    // 3. Perform soft delete
+    const result = await SnapRepository.deleteById(snapId);
+    if (result === 0) {
+      throw new AppError('Không tìm thấy khoảnh khắc.', 404, 'SNAP_NOT_FOUND');
+    }
+
+    return {
+      message: 'Đã xóa khoảnh khắc thành công. Các chi tiêu liên kết vẫn được giữ lại.',
     };
   }
 }

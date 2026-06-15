@@ -3,7 +3,11 @@ import { SnapController } from '../controllers/snap.controller';
 import { authMiddleware } from '../../../middlewares/auth.middleware';
 import { uploadImageMiddleware } from '../../../middlewares/upload.middleware';
 import { validateRequest } from '../../../middlewares/validation.middleware';
-import { createSnapSchema, timelineQuerySchema } from '../validators/snap.validator';
+import {
+  createSnapSchema,
+  timelineQuerySchema,
+  deleteSnapSchema,
+} from '../validators/snap.validator';
 
 const router = Router();
 
@@ -21,5 +25,7 @@ router.get(
   validateRequest(timelineQuerySchema),
   SnapController.getTimeline,
 );
+
+router.delete('/:id', authMiddleware, validateRequest(deleteSnapSchema), SnapController.deleteSnap);
 
 export default router;

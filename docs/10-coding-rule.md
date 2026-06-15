@@ -161,3 +161,11 @@ Tuân thủ mô hình phân tầng **Layered Architecture**:
 ### Ràng buộc về kiểu dữ liệu (Strict Typing)
 * **Tuyệt đối không dùng any**: Không dùng `any` hoặc `as any` trong repository, service, controller, hay mã nguồn test. Sử dụng kiểu dữ liệu phù hợp của Sequelize, Zod hoặc TypeScript interface.
 * **Typing cho phản hồi kiểm thử (Test Response Body)**: Khi kiểm tra phản hồi từ API trong test (như kiểm tra các trường bị leak), hãy định nghĩa interface test-local hoặc dùng `Record<string, unknown>` thay vì ép kiểu qua `any`.
+
+### Thiết kế Nghiệp vụ & Đồng bộ Kiểm thử (Anti-regression & Integrity)
+* **Xử lý soft-delete với thực thể con (Cascade Soft-delete)**: Khi soft-delete thực thể cha (ví dụ: Snap), không được mặc định xóa hoặc ẩn thực thể con liên quan (ví dụ: Expense) trừ khi có yêu cầu nghiệp vụ rõ ràng. Phải giữ nguyên sự tồn tại của thực thể con và cập nhật cách hiển thị hoặc trạng thái (ví dụ `snapDeleted: true`) trên API.
+* **Không hard-code số lượng count trong test**: Khi test seed thêm dữ liệu active, tránh hard-code total count rải rác ở nhiều test case. Thay vào đó, hãy sử dụng hằng số rõ nghĩa ở mức describe block (ví dụ: `expectedUser1ActiveExpenseCount`) để khi thêm/bớt dữ liệu seed chỉ cần cập nhật tại một nơi duy nhất.
+* **Khai báo test-local interface ở phạm vi phù hợp**: Nếu một test-local response interface được sử dụng chung cho nhiều describe block trong cùng một file spec, bắt buộc phải khai báo interface này ở top-level scope (ngay sau phần import) để tránh lỗi scope compile và lỗi implicit `any` của TypeScript.
+* **Không sửa business logic để chiều lòng test cũ**: Khi hành vi nghiệp vụ của API thay đổi hợp lệ, phải cập nhật lại expectation của các test case cũ cho khớp với behavior mới thay vì tìm cách sửa đổi business logic để test cũ chạy qua.
+* **Eager load và bảo mật dữ liệu soft-delete**: Khi cần eager load một association có thể đã bị soft-deleted, bắt buộc dùng option `paranoid: false` và map DTO rõ ràng, tuyệt đối không leak các trường nội bộ của database như `deleted_at`, `updated_at`, `image_url` hoặc `user_id`.
+
