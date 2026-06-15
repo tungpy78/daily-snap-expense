@@ -248,4 +248,103 @@ describe('Auth Registration Integration Tests', () => {
       expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
     });
   });
+
+  describe('POST /api/v1/auth/refresh', () => {
+    it('should refresh tokens successfully with valid refresh token and return HTTP 200', async () => {
+      // 1. Register and login to get a refresh token
+      const credentials = getUniqueCredentials();
+      testUsersToCleanup.push(credentials.username);
+      const registerRes = await request(app).post('/api/v1/auth/register').send(credentials);
+      const oldRefreshToken = registerRes.body.data.tokens.refreshToken;
+
+      // 2. Call refresh
+      const response = await request(app).post('/api/v1/auth/refresh').send({
+        refreshToken: oldRefreshToken,
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body.data).toHaveProperty('tokens');
+      expect(response.body.data.tokens).toHaveProperty('accessToken');
+      expect(response.body.data.tokens).toHaveProperty('refreshToken');
+
+      // Security check: no internal metadata leaked
+      expect(response.body.data).not.toHaveProperty('jti');
+      expect(response.body.data).not.toHaveProperty('refreshTokenId');
+      expect(response.body.data).not.toHaveProperty('refreshTokenExpiresAt');
+      expect(response.body.data).not.toHaveProperty('password_hash');
+
+      // 3. Trying to reuse the old refresh token (rotated) must fail
+      const reuseResponse = await request(app).post('/api/v1/auth/refresh').send({
+        refreshToken: oldRefreshToken,
+      });
+      expect(reuseResponse.status).toBe(401);
+      expect(reuseResponse.body).toHaveProperty('success', false);
+      expect(reuseResponse.body.error).toHaveProperty('code', 'INVALID_TOKEN');
+    });
+
+    it('should return HTTP 401 when refresh token is malformed', async () => {
+      const response = await request(app).post('/api/v1/auth/refresh').send({
+        refreshToken: 'invalid.refresh.token',
+      });
+
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'INVALID_TOKEN');
+    });
+
+    it('should return HTTP 400 when refreshToken is empty', async () => {
+      const response = await request(app).post('/api/v1/auth/refresh').send({
+        refreshToken: '',
+      });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+
+    it('should return HTTP 400 when refreshToken is missing', async () => {
+      const response = await request(app).post('/api/v1/auth/refresh').send({});
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+  });
+
+  describe('POST /api/v1/auth/logout', () => {
+    it('should logout successfully and return HTTP 200', async () => {
+      // 1. Register a user
+      const credentials = getUniqueCredentials();
+      testUsersToCleanup.push(credentials.username);
+      const registerRes = await request(app).post('/api/v1/auth/register').send(credentials);
+      const { accessToken, refreshToken } = registerRes.body.data.tokens;
+
+      // 2. Logout
+      const logoutResponse = await request(app)
+        .post('/api/v1/auth/logout')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ refreshToken });
+
+      expect(logoutResponse.status).toBe(200);
+      expect(logoutResponse.body).toHaveProperty('success', true);
+      expect(logoutResponse.body.data).toHaveProperty('message', 'Đăng xuất thành công.');
+
+      // 3. Trying to refresh using the revoked token must fail with HTTP 401
+      const refreshResponse = await request(app).post('/api/v1/auth/refresh').send({
+        refreshToken,
+      });
+      expect(refreshResponse.status).toBe(401);
+      expect(refreshResponse.body).toHaveProperty('success', false);
+      expect(refreshResponse.body.error).toHaveProperty('code', 'INVALID_TOKEN');
+    });
+
+    it('should return HTTP 400 when logout is missing refreshToken', async () => {
+      const response = await request(app).post('/api/v1/auth/logout').send({});
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+  });
 });

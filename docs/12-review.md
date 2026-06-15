@@ -873,5 +873,77 @@ Nghiệm thu toàn bộ kiểm thử trên môi trường thực tế:
 ### Decision
 - Approved (Refactor cấu trúc code DTO và siết chặt tài liệu kiến trúc hoàn thành xuất sắc, đảm bảo chất lượng codebase sạch sẽ).
 
+---
+
+## Review: T-3.5 - Endpoint Refresh Token và Đăng xuất
+
+### Date
+2026-06-15
+
+### Summary
+Triển khai hoàn chỉnh cơ chế bảo mật phiên làm việc sử dụng Refresh Token kết hợp cơ chế Refresh Token Rotation (RTR) và tính năng Đăng xuất an toàn.
+
+### Files Changed
+- `backend/src/shared/database/migrations/20260615000000-create-refresh-tokens.js` (Tạo mới migration)
+- `backend/src/shared/models/refresh-token.model.ts` (Tạo mới model)
+- `backend/src/modules/auth/repositories/refresh-token.repository.ts` (Tạo mới repository)
+- `backend/src/modules/auth/dtos/auth.dto.ts` (Chỉnh sửa để thêm RefreshDto, LogoutDto)
+- `backend/src/modules/auth/validators/auth.validator.ts` (Chỉnh sửa để thêm refreshSchema, logoutSchema)
+- `backend/src/modules/auth/services/token.service.ts` (Chỉnh sửa để refresh token có jti claim và quản lý hạn dùng)
+- `backend/src/modules/auth/services/auth.service.ts` (Chỉnh sửa để tích hợp lưu token ở login/register, xử lý xoay vòng token RTR và thu hồi khi logout)
+- `backend/src/modules/auth/controllers/auth.controller.ts` (Chỉnh sửa thêm controller refresh và logout)
+- `backend/src/modules/auth/routes/auth.routes.ts` (Chỉnh sửa cấu hình endpoint)
+- `backend/src/modules/auth/routes/auth.routes.spec.ts` (Chỉnh sửa tích hợp các test cases của T-3.5)
+
+### What Went Well
+- Đã cấu hình và khởi chạy migration tạo bảng `refresh_tokens` lưu phiên làm việc của refresh token thông qua định danh duy nhất UUID (`jti`).
+- Đã thiết lập model `RefreshToken` và repository `RefreshTokenRepository` đúng kiến trúc phân lớp Backend.
+- `TokenService` đã tự động sinh claim `jti` bằng UUID của Node (`crypto.randomUUID()`) trong payload refresh token.
+- Quá trình đăng ký và đăng nhập được cập nhật đồng bộ để tạo và lưu thông tin UUID `jti` của refresh token vào cơ sở dữ liệu.
+- Tích hợp thành công và an toàn hai API cốt lõi:
+  - `POST /api/v1/auth/refresh`: Dùng cho cơ chế làm mới access token & refresh token.
+  - `POST /api/v1/auth/logout`: Thu hồi token khi người dùng đăng xuất.
+- Cơ chế Refresh Token Rotation (RTR) đã hoạt động trơn tru:
+  - Token cũ bị xoay vòng, xóa khỏi database ngay sau khi refresh thành công.
+  - Hành vi cố tình tái sử dụng token cũ lập tức trả về HTTP 401 với code `INVALID_TOKEN`.
+- Tính năng đăng xuất an toàn đã hoạt động:
+  - Logout sẽ thực hiện thu hồi/xóa refresh token khỏi database thay vì chỉ xóa ở phía client.
+  - Tái sử dụng refresh token đã bị logout lập tức trả về HTTP 401 với code `INVALID_TOKEN`.
+- Bảo mật thông tin được đảm bảo tuyệt đối, response DTO trả về cho client hoàn toàn không rò rỉ các trường nhạy cảm: `jti`, `refreshTokenId`, `refreshTokenExpiresAt`, `password_hash`.
+- Đảm bảo nghiêm ngặt ranh giới kiến trúc: Service và Controller hoàn toàn không import hay gọi trực tiếp Sequelize Model; tầng duy nhất giao tiếp database là Repository.
+- Biên dịch TypeScript (build) thành công 100%.
+
+### Technical Notes
+- **Phân chia trách nhiệm xác thực**:
+  - `jwt.verify` chịu trách nhiệm kiểm tra tính hợp lệ về mặt mật mã (signature) và thời hạn hết hạn (`exp`) của refresh token phía client gửi lên.
+  - Cơ sở dữ liệu chịu trách nhiệm kiểm tra xem phiên làm việc tương ứng với token đó có còn tồn tại và được server công nhận hay không (tránh các trường hợp token đã bị rotate/logout trước đó).
+- **Xử lý timezone trong database**:
+  - Do kiểu dữ liệu `DATETIME` trong MySQL không lưu trữ thông tin múi giờ, việc sử dụng điều kiện `expires_at > now` trực tiếp trong câu lệnh SQL `destroy` dễ phát sinh sai số hoặc so lệch múi giờ trên các môi trường local khác nhau.
+  - Giải pháp tối ưu và an toàn nhất là xóa bản ghi trực tiếp theo `id` (claim `jti`). Vì chữ ký và thời hạn của JWT đã được xác thực an toàn ở tầng ứng dụng bằng `jsonwebtoken`, việc truy vấn xóa trực tiếp theo `id` là hoàn toàn chính xác và tránh được các lỗi so sánh ngày giờ ở database.
+
+### Issues Found
+- Không có. Các log cảnh báo lỗi `console.error` hiển thị trong Jest là hành vi ném lỗi mong muốn và có chủ đích từ các trường hợp kiểm thử negative test cases (như kiểm tra các trường hợp truyền token malformed hoặc rỗng).
+
+### Security Review
+- Áp dụng thành công cơ chế Refresh Token Rotation (RTR) bảo vệ người dùng trước nguy cơ rò rỉ token.
+- Không rò rỉ bất kỳ siêu dữ liệu nội bộ nào (`password_hash`, `jti`, `refreshTokenExpiresAt`, `refreshTokenId`).
+
+### Performance Review
+- Cột `user_id` và `expires_at` của bảng `refresh_tokens` đã được đánh chỉ mục (index) giúp tăng tốc độ truy vấn và tối ưu hóa cho các thao tác dọn dẹp định kỳ sau này.
+
+### Test Review
+Nghiệm thu toàn bộ kiểm thử trên môi trường thực tế:
+- `npm run format` & `npm run format:check` vượt qua thành công (pass).
+- `npm run lint` vượt qua thành công (pass).
+- `npm run test` chạy thành công **3 test suites** và **42 tests** pass sạch sẽ 100%.
+- `npm run build` biên dịch TypeScript pass 100%.
+
+### Documentation Updated
+- Yes
+- Files: `docs/11-task.md`, `docs/12-review.md`
+
+### Decision
+- Approved (Endpoint Refresh Token và Đăng xuất hoàn thành nghiệm thu xuất sắc trên máy thật, toàn bộ test suite pass 42/42 và sạch lỗi lint/format/build).
+
 
 

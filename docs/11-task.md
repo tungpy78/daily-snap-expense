@@ -113,7 +113,7 @@
     *   **Module ảnh hưởng**: Auth Module
     *   **Test**: Test lấy access token mới qua refresh token. Đăng xuất xong không dùng được refresh token cũ nữa.
     *   **Dependency**: T-3.4
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-3.6**: Phát triển `authMiddleware` chặn truy cập trái phép
     *   **Mục tiêu**: Bảo vệ các API nhạy cảm.
     *   **Mô tả**: Middleware kiểm tra header `Authorization: Bearer [accessToken]`, verify JWT và gán `req.user`.

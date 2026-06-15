@@ -21,3 +21,11 @@ export interface AuthResponseDto {
     refreshToken: string;
   };
 }
+
+export interface RefreshDto {
+  refreshToken: string;
+}
+
+export interface LogoutDto {
+  refreshToken: string;
+}

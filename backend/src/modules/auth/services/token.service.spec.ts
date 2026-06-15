@@ -145,10 +145,10 @@ describe('TokenService', () => {
   });
 
   describe('verifyRefreshToken', () => {
-    it('should verify refresh token and return the correct userId', () => {
+    it('should verify refresh token and return the correct userId and jti', () => {
       const token = tokenService.generateRefreshToken({ userId });
       const payload = tokenService.verifyRefreshToken(token);
-      expect(payload).toEqual({ userId });
+      expect(payload).toEqual({ userId, jti: expect.any(String) });
     });
 
     it('should throw INVALID_TOKEN when verify fails (e.g. using access token with refresh verify)', () => {

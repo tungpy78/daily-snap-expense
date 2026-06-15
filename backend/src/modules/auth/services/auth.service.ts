@@ -1,13 +1,22 @@
 import { UserRepository } from '../../users/repositories/user.repository';
+import { RefreshTokenRepository } from '../repositories/refresh-token.repository';
 import { BcryptHelper } from '../helpers/bcrypt.helper';
 import { tokenService } from './token.service';
 import { AppError } from '../../../shared/utils/appError';
-import type { RegisterDto, LoginDto, AuthResponseDto } from '../dtos/auth.dto';
+import type {
+  RegisterDto,
+  LoginDto,
+  AuthResponseDto,
+  RefreshDto,
+  LogoutDto,
+} from '../dtos/auth.dto';
+import sequelize from '../../../shared/database/index';
 
 export class AuthService {
   /**
    * Registers a new user account.
-   * Checks for duplicate email and username via UserRepository, hashes password, and issues JWT tokens.
+   * Checks for duplicate email and username via UserRepository, hashes password, issues JWT tokens,
+   * and saves the refresh token identifier (jti) in the database.
    */
   public static async register(data: RegisterDto): Promise<AuthResponseDto> {
     const { username, email, password } = data;
@@ -37,7 +46,14 @@ export class AuthService {
     });
 
     // 5. Generate Access & Refresh JWT tokens
-    const tokens = tokenService.generateAuthTokens(user.id);
+    const tokenData = tokenService.generateAuthTokens(user.id);
+
+    // Save refresh token record to DB
+    await RefreshTokenRepository.create({
+      id: tokenData.refreshTokenId,
+      userId: user.id,
+      expiresAt: tokenData.refreshTokenExpiresAt,
+    });
 
     // 6. Return safe DTO response
     return {
@@ -47,13 +63,17 @@ export class AuthService {
         email: user.email,
         role: user.role,
       },
-      tokens,
+      tokens: {
+        accessToken: tokenData.accessToken,
+        refreshToken: tokenData.refreshToken,
+      },
     };
   }
 
   /**
    * Authenticates a user with username/email and password.
-   * Verifies identity, active status, and password correctness, then updates last login timestamp and returns auth tokens.
+   * Verifies identity, active status, and password correctness, updates last login timestamp,
+   * saves the refresh token identifier (jti) in the database, and returns auth tokens.
    */
   public static async login(data: LoginDto): Promise<AuthResponseDto> {
     const { identity, password } = data;
@@ -87,7 +107,14 @@ export class AuthService {
     await UserRepository.updateLastLogin(user.id);
 
     // 5. Generate Access & Refresh JWT tokens
-    const tokens = tokenService.generateAuthTokens(user.id);
+    const tokenData = tokenService.generateAuthTokens(user.id);
+
+    // Save refresh token record to DB
+    await RefreshTokenRepository.create({
+      id: tokenData.refreshTokenId,
+      userId: user.id,
+      expiresAt: tokenData.refreshTokenExpiresAt,
+    });
 
     // 6. Return DTO response
     return {
@@ -97,7 +124,78 @@ export class AuthService {
         email: user.email,
         role: user.role,
       },
-      tokens,
+      tokens: {
+        accessToken: tokenData.accessToken,
+        refreshToken: tokenData.refreshToken,
+      },
     };
+  }
+
+  /**
+   * Refreshes access and refresh tokens using an old valid refresh token.
+   * Utilizes Refresh Token Rotation (RTR) and performs atomic delete-and-check under a database transaction.
+   */
+  public static async refresh(
+    data: RefreshDto,
+  ): Promise<{ tokens: { accessToken: string; refreshToken: string } }> {
+    const { refreshToken } = data;
+
+    // 1. Verify refresh token signature & expiration
+    const decoded = tokenService.verifyRefreshToken(refreshToken);
+    const { userId, jti } = decoded;
+
+    // 2. Perform RTR atomically under transaction
+    const t = await sequelize.transaction();
+    try {
+      // Delete old token
+      const affectedRows = await RefreshTokenRepository.deleteExistingById(jti, t);
+
+      // If no token was deleted, it means the token was either already rotated/used, or expired
+      if (affectedRows === 0) {
+        throw new AppError('Token không hợp lệ hoặc đã hết hạn.', 401, 'INVALID_TOKEN');
+      }
+
+      // Generate new tokens
+      const tokenData = tokenService.generateAuthTokens(userId);
+
+      // Save new refresh token record
+      await RefreshTokenRepository.create(
+        {
+          id: tokenData.refreshTokenId,
+          userId,
+          expiresAt: tokenData.refreshTokenExpiresAt,
+        },
+        t,
+      );
+
+      await t.commit();
+
+      return {
+        tokens: {
+          accessToken: tokenData.accessToken,
+          refreshToken: tokenData.refreshToken,
+        },
+      };
+    } catch (error) {
+      await t.rollback();
+      throw error;
+    }
+  }
+
+  /**
+   * Logs out a user by deleting/revoking their refresh token in the database.
+   */
+  public static async logout(data: LogoutDto): Promise<void> {
+    const { refreshToken } = data;
+
+    // 1. Verify refresh token
+    const decoded = tokenService.verifyRefreshToken(refreshToken);
+    const { jti } = decoded;
+
+    // 2. Delete/revoke refresh token from database
+    const affectedRows = await RefreshTokenRepository.deleteById(jti);
+    if (affectedRows === 0) {
+      throw new AppError('Token không hợp lệ hoặc đã hết hạn.', 401, 'INVALID_TOKEN');
+    }
   }
 }

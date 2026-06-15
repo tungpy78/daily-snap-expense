@@ -1,10 +1,12 @@
 import jwt, { type SignOptions, TokenExpiredError, JsonWebTokenError } from 'jsonwebtoken';
+import crypto from 'crypto';
 import { AppError } from '../../../shared/utils/appError';
 
 export type JwtExpiresIn = SignOptions['expiresIn'];
 
 export interface TokenPayload {
   userId: string;
+  jti?: string;
 }
 
 export interface TokenServiceConfig {
@@ -12,6 +14,13 @@ export interface TokenServiceConfig {
   refreshSecret?: string;
   accessExpiresIn?: JwtExpiresIn;
   refreshExpiresIn?: JwtExpiresIn;
+}
+
+export interface GeneratedAuthTokens {
+  accessToken: string;
+  refreshToken: string;
+  refreshTokenId: string;
+  refreshTokenExpiresAt: Date;
 }
 
 export class TokenService {
@@ -48,6 +57,41 @@ export class TokenService {
     return val as JwtExpiresIn;
   }
 
+  /**
+   * Helper to calculate expiration date from JwtExpiresIn value.
+   */
+  private getExpiresAt(expiresIn: JwtExpiresIn): Date {
+    const now = Date.now();
+    if (typeof expiresIn === 'number') {
+      return new Date(now + expiresIn * 1000);
+    }
+    if (typeof expiresIn === 'string') {
+      const match = expiresIn.match(/^(\d+)([dhms])$/);
+      if (match) {
+        const value = parseInt(match[1], 10);
+        const unit = match[2];
+        let ms = 0;
+        switch (unit) {
+          case 'd':
+            ms = value * 24 * 60 * 60 * 1000;
+            break;
+          case 'h':
+            ms = value * 60 * 60 * 1000;
+            break;
+          case 'm':
+            ms = value * 60 * 1000;
+            break;
+          case 's':
+            ms = value * 1000;
+            break;
+        }
+        return new Date(now + ms);
+      }
+    }
+    // Fallback to 7 days
+    return new Date(now + 7 * 24 * 60 * 60 * 1000);
+  }
+
   private validateAccessConfig(): void {
     if (!this.accessSecret) {
       throw new AppError('JWT_ACCESS_SECRET is not configured', 500, 'CONFIG_ERROR');
@@ -81,6 +125,7 @@ export class TokenService {
 
   /**
    * Generates a new JWT refresh token.
+   * Auto-generates a jti UUID if not provided in payload.
    */
   public generateRefreshToken(payload: TokenPayload): string {
     this.validateRefreshConfig();
@@ -89,21 +134,33 @@ export class TokenService {
       expiresIn: this.refreshExpiresIn,
     };
 
-    return jwt.sign(payload, this.refreshSecret, options);
+    const finalPayload = {
+      userId: payload.userId,
+      jti: payload.jti || crypto.randomUUID(),
+    };
+
+    return jwt.sign(finalPayload, this.refreshSecret, options);
   }
 
   /**
-   * Generates both access token and refresh token.
+   * Generates both access token and refresh token along with metadata.
    */
-  public generateAuthTokens(userId: string): { accessToken: string; refreshToken: string } {
+  public generateAuthTokens(userId: string): GeneratedAuthTokens {
     if (!userId || userId.trim() === '') {
       throw new AppError('UserId cannot be empty', 400, 'BAD_REQUEST');
     }
-    const payload: TokenPayload = { userId };
-    const accessToken = this.generateAccessToken(payload);
-    const refreshToken = this.generateRefreshToken(payload);
+    const jti = crypto.randomUUID();
+    const expiresAt = this.getExpiresAt(this.refreshExpiresIn);
 
-    return { accessToken, refreshToken };
+    const accessToken = this.generateAccessToken({ userId });
+    const refreshToken = this.generateRefreshToken({ userId, jti });
+
+    return {
+      accessToken,
+      refreshToken,
+      refreshTokenId: jti,
+      refreshTokenExpiresAt: expiresAt,
+    };
   }
 
   /**
@@ -127,9 +184,9 @@ export class TokenService {
   }
 
   /**
-   * Verifies a refresh token and returns its payload.
+   * Verifies a refresh token and returns its payload containing userId and jti.
    */
-  public verifyRefreshToken(token: string): TokenPayload {
+  public verifyRefreshToken(token: string): { userId: string; jti: string } {
     this.validateRefreshConfig();
     if (!token || token.trim() === '') {
       throw new AppError('Token cannot be empty', 400, 'BAD_REQUEST');
@@ -137,10 +194,10 @@ export class TokenService {
 
     try {
       const decoded = jwt.verify(token, this.refreshSecret) as TokenPayload;
-      if (!decoded || !decoded.userId) {
+      if (!decoded || !decoded.userId || !decoded.jti) {
         throw new AppError('Token không hợp lệ.', 401, 'INVALID_TOKEN');
       }
-      return { userId: decoded.userId };
+      return { userId: decoded.userId, jti: decoded.jti };
     } catch (error) {
       this.handleJwtError(error);
     }

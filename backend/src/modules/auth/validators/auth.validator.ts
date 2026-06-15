@@ -36,3 +36,25 @@ export const loginBodySchema = z.object({
 export const loginSchema = {
   body: loginBodySchema,
 };
+
+export const refreshBodySchema = z.object({
+  refreshToken: z
+    .string({ required_error: 'Refresh token là bắt buộc' })
+    .trim()
+    .min(1, 'Refresh token không được để trống'),
+});
+
+export const refreshSchema = {
+  body: refreshBodySchema,
+};
+
+export const logoutBodySchema = z.object({
+  refreshToken: z
+    .string({ required_error: 'Refresh token là bắt buộc' })
+    .trim()
+    .min(1, 'Refresh token không được để trống'),
+});
+
+export const logoutSchema = {
+  body: logoutBodySchema,
+};
