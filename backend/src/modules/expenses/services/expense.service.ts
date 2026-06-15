@@ -1,7 +1,12 @@
 import { ExpenseRepository } from '../repositories/expense.repository';
 import { CategoryRepository } from '../../categories/repositories/category.repository';
 import { AppError } from '../../../shared/utils/appError';
-import type { CreateExpenseDto, ExpenseDto } from '../dtos/expense.dto';
+import type {
+  CreateExpenseDto,
+  ExpenseDto,
+  ExpenseListQueryDto,
+  ExpenseListResponseDto,
+} from '../dtos/expense.dto';
 
 export class ExpenseService {
   /**
@@ -54,6 +59,49 @@ export class ExpenseService {
       date: expense.date,
       snapId: expense.snap_id,
       createdAt: expense.created_at ? expense.created_at.toISOString() : new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Retrieves a paginated list of expenses for a user, applying filters.
+   */
+  public static async getExpensesList(
+    userId: string,
+    query: ExpenseListQueryDto,
+  ): Promise<ExpenseListResponseDto> {
+    // 1. Query repository
+    const { rows, count } = await ExpenseRepository.findAndCountByUser(userId, query);
+
+    // 2. Map rows to safe DTO objects
+    const expenses = rows.map((expense) => {
+      let snapDetails = null;
+      if (expense.snap_id !== null) {
+        snapDetails = {
+          snapDeleted: true,
+          imageUrl: null,
+        };
+      }
+
+      return {
+        id: expense.id,
+        amount: Number(expense.amount),
+        categoryId: expense.category_id,
+        note: expense.note,
+        date: expense.date,
+        snapId: expense.snap_id,
+        snapDetails,
+        createdAt: expense.created_at ? expense.created_at.toISOString() : new Date().toISOString(),
+      };
+    });
+
+    // 3. Return response with pagination info
+    return {
+      expenses,
+      pagination: {
+        total: count,
+        limit: query.limit,
+        offset: query.offset,
+      },
     };
   }
 }

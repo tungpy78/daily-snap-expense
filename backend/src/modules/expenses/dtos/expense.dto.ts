@@ -24,3 +24,36 @@ export interface CreateExpenseData {
   date: string;
   snap_id: string | null;
 }
+
+export interface ExpenseSnapDetailsDto {
+  snapDeleted: boolean;
+  imageUrl: string | null;
+}
+
+export interface ExpenseListItemDto {
+  id: string;
+  amount: number;
+  categoryId: string;
+  note: string | null;
+  date: string;
+  snapId: string | null;
+  snapDetails: ExpenseSnapDetailsDto | null;
+  createdAt: string;
+}
+
+export interface ExpenseListQueryDto {
+  startDate?: string;
+  endDate?: string;
+  categoryId?: string;
+  limit: number;
+  offset: number;
+}
+
+export interface ExpenseListResponseDto {
+  expenses: ExpenseListItemDto[];
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+  };
+}

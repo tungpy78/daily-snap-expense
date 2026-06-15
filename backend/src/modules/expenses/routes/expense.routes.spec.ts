@@ -6,6 +6,7 @@ import { Category } from '../../../shared/models/category.model';
 import { Expense } from '../../../shared/models/expense.model';
 import sequelize from '../../../shared/database/index';
 import { tokenService } from '../../auth/services/token.service';
+import type { ExpenseListItemDto } from '../dtos/expense.dto';
 
 describe('Expense Integration Tests', () => {
   const testUsernames = ['test_exp_user_1', 'test_exp_user_2'];
@@ -27,6 +28,7 @@ describe('Expense Integration Tests', () => {
   let sysCategory: Category;
   let user1Category: Category;
   let user2Category: Category;
+  let softDeletedExpenseId: string;
 
   beforeAll(async () => {
     // Inject mock secrets for integration tests
@@ -376,6 +378,363 @@ describe('Expense Integration Tests', () => {
 
       expect(response.status).toBe(403);
       expect(response.body.error).toHaveProperty('code', 'FORBIDDEN');
+    });
+  });
+
+  describe('GET /api/v1/expenses', () => {
+    beforeAll(async () => {
+      // Clear all expenses so we have a completely clean state for query tests
+      await Expense.destroy({ where: {}, force: true });
+
+      // Seed test expenses for user 1 with deterministic created_at
+      await Expense.create({
+        user_id: user1.id,
+        category_id: sysCategory.id,
+        amount: 10000,
+        note: 'Exp A',
+        date: '2026-06-10',
+        snap_id: null,
+        created_at: new Date('2026-06-15T10:00:00.000Z'),
+      });
+
+      await Expense.create({
+        user_id: user1.id,
+        category_id: user1Category.id,
+        amount: 20000,
+        note: 'Exp B',
+        date: '2026-06-11',
+        snap_id: null,
+        created_at: new Date('2026-06-15T11:00:00.000Z'),
+      });
+
+      await Expense.create({
+        user_id: user1.id,
+        category_id: sysCategory.id,
+        amount: 30000,
+        note: 'Exp C',
+        date: '2026-06-12',
+        snap_id: null,
+        created_at: new Date('2026-06-15T12:00:00.000Z'),
+      });
+
+      await Expense.create({
+        user_id: user1.id,
+        category_id: sysCategory.id,
+        amount: 40000,
+        note: 'Exp D',
+        date: '2026-06-12',
+        snap_id: null,
+        created_at: new Date('2026-06-15T13:00:00.000Z'),
+      });
+
+      await Expense.create({
+        user_id: user1.id,
+        category_id: sysCategory.id,
+        amount: 50000,
+        note: 'Exp E',
+        date: '2026-06-13',
+        snap_id: '11111111-1111-1111-1111-111111111111',
+        created_at: new Date('2026-06-15T14:00:00.000Z'),
+      });
+
+      // Soft deleted expense for user 1
+      const softDeletedExpense = await Expense.create({
+        user_id: user1.id,
+        category_id: sysCategory.id,
+        amount: 60000,
+        note: 'Exp F',
+        date: '2026-06-14',
+        snap_id: null,
+        created_at: new Date('2026-06-15T15:00:00.000Z'),
+      });
+      await softDeletedExpense.destroy();
+      softDeletedExpenseId = softDeletedExpense.id;
+
+      // Seed test expense for user 2
+      await Expense.create({
+        user_id: user2.id,
+        category_id: user2Category.id,
+        amount: 70000,
+        note: 'Exp G',
+        date: '2026-06-12',
+        snap_id: null,
+        created_at: new Date('2026-06-15T16:00:00.000Z'),
+      });
+    });
+
+    it('should return HTTP 401 when Authorization header is missing', async () => {
+      const response = await request(app).get('/api/v1/expenses');
+
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'UNAUTHORIZED');
+    });
+
+    it('should return HTTP 401 when token is invalid', async () => {
+      const response = await request(app)
+        .get('/api/v1/expenses')
+        .set('Authorization', 'Bearer invalid.token.value');
+
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'INVALID_TOKEN');
+    });
+
+    it('should return HTTP 400 when startDate has invalid format', async () => {
+      const response = await request(app)
+        .get('/api/v1/expenses')
+        .set('Authorization', `Bearer ${token1}`)
+        .query({ startDate: '10-06-2026' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+
+    it('should return HTTP 400 when endDate has invalid format', async () => {
+      const response = await request(app)
+        .get('/api/v1/expenses')
+        .set('Authorization', `Bearer ${token1}`)
+        .query({ endDate: '12-06-2026' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+
+    it('should return HTTP 400 when startDate > endDate', async () => {
+      const response = await request(app)
+        .get('/api/v1/expenses')
+        .set('Authorization', `Bearer ${token1}`)
+        .query({ startDate: '2026-06-12', endDate: '2026-06-11' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+
+    it('should return HTTP 400 when categoryId has invalid UUID format', async () => {
+      const response = await request(app)
+        .get('/api/v1/expenses')
+        .set('Authorization', `Bearer ${token1}`)
+        .query({ categoryId: 'not-a-uuid' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+
+    it('should return HTTP 400 when limit is not an integer', async () => {
+      const response = await request(app)
+        .get('/api/v1/expenses')
+        .set('Authorization', `Bearer ${token1}`)
+        .query({ limit: 'abc' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+
+    it('should return HTTP 400 when limit <= 0', async () => {
+      const response = await request(app)
+        .get('/api/v1/expenses')
+        .set('Authorization', `Bearer ${token1}`)
+        .query({ limit: 0 });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+
+    it('should return HTTP 400 when limit > 100', async () => {
+      const response = await request(app)
+        .get('/api/v1/expenses')
+        .set('Authorization', `Bearer ${token1}`)
+        .query({ limit: 101 });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+
+    it('should return HTTP 400 when offset is not an integer', async () => {
+      const response = await request(app)
+        .get('/api/v1/expenses')
+        .set('Authorization', `Bearer ${token1}`)
+        .query({ offset: 'abc' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+
+    it('should return HTTP 400 when offset < 0', async () => {
+      const response = await request(app)
+        .get('/api/v1/expenses')
+        .set('Authorization', `Bearer ${token1}`)
+        .query({ offset: -1 });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+
+    it('should return HTTP 200 and list of user1 expenses with default pagination', async () => {
+      const response = await request(app)
+        .get('/api/v1/expenses')
+        .set('Authorization', `Bearer ${token1}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body.data).toHaveProperty('expenses');
+      expect(response.body.data).toHaveProperty('pagination');
+
+      const expenses = response.body.data.expenses as ExpenseListItemDto[];
+      expect(Array.isArray(expenses)).toBe(true);
+      expect(expenses.length).toBe(5); // 5 active items seeded (POST items were cleared in beforeAll)
+
+      const pagination = response.body.data.pagination;
+      expect(pagination.total).toBe(5);
+      expect(pagination.limit).toBe(20);
+      expect(pagination.offset).toBe(0);
+
+      expenses.forEach((item: ExpenseListItemDto) => {
+        const itemRecord = item as unknown as Record<string, unknown>;
+        expect(itemRecord).toHaveProperty('id');
+        expect(itemRecord).toHaveProperty('amount');
+        expect(itemRecord).toHaveProperty('categoryId');
+        expect(itemRecord).toHaveProperty('note');
+        expect(itemRecord).toHaveProperty('date');
+        expect(itemRecord).toHaveProperty('snapId');
+        expect(itemRecord).toHaveProperty('snapDetails');
+        expect(itemRecord).toHaveProperty('createdAt');
+
+        expect(itemRecord).not.toHaveProperty('user_id');
+        expect(itemRecord).not.toHaveProperty('category_id');
+        expect(itemRecord).not.toHaveProperty('snap_id');
+        expect(itemRecord).not.toHaveProperty('deleted_at');
+        expect(itemRecord).not.toHaveProperty('updated_at');
+      });
+    });
+
+    it('should only return expenses belonging to the current user', async () => {
+      const response = await request(app)
+        .get('/api/v1/expenses')
+        .set('Authorization', `Bearer ${token2}`);
+
+      expect(response.status).toBe(200);
+      const expenses = response.body.data.expenses as ExpenseListItemDto[];
+
+      expect(expenses.length).toBe(1); // user2 has exactly 1 active item (POST items cleared)
+      expect(response.body.data.pagination.total).toBe(1);
+
+      const user1Items = expenses.filter(
+        (item: ExpenseListItemDto) => item.amount === 20000 || item.note === 'Exp A',
+      );
+      expect(user1Items.length).toBe(0);
+    });
+
+    it('should support pagination correctly', async () => {
+      const response = await request(app)
+        .get('/api/v1/expenses')
+        .set('Authorization', `Bearer ${token1}`)
+        .query({ limit: 3, offset: 2 });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.expenses.length).toBe(3);
+      expect(response.body.data.pagination.total).toBe(5);
+      expect(response.body.data.pagination.limit).toBe(3);
+      expect(response.body.data.pagination.offset).toBe(2);
+    });
+
+    it('should filter by categoryId correctly', async () => {
+      const response = await request(app)
+        .get('/api/v1/expenses')
+        .set('Authorization', `Bearer ${token1}`)
+        .query({ categoryId: user1Category.id });
+
+      expect(response.status).toBe(200);
+      const expenses = response.body.data.expenses as ExpenseListItemDto[];
+      expect(expenses.length).toBe(1); // Exp B is the only matching one (POST items cleared)
+      expenses.forEach((item: ExpenseListItemDto) => {
+        expect(item.categoryId).toBe(user1Category.id);
+      });
+    });
+
+    it('should filter by startDate and endDate correctly', async () => {
+      const response = await request(app)
+        .get('/api/v1/expenses')
+        .set('Authorization', `Bearer ${token1}`)
+        .query({ startDate: '2026-06-11', endDate: '2026-06-12' });
+
+      expect(response.status).toBe(200);
+      const expenses = response.body.data.expenses as ExpenseListItemDto[];
+      expect(expenses.length).toBe(3);
+
+      const notes = expenses.map((item: ExpenseListItemDto) => item.note);
+      expect(notes).toContain('Exp B');
+      expect(notes).toContain('Exp C');
+      expect(notes).toContain('Exp D');
+    });
+
+    it('should support combining multiple filters correctly', async () => {
+      const response = await request(app)
+        .get('/api/v1/expenses')
+        .set('Authorization', `Bearer ${token1}`)
+        .query({
+          startDate: '2026-06-11',
+          endDate: '2026-06-12',
+          categoryId: user1Category.id,
+        });
+
+      expect(response.status).toBe(200);
+      const expenses = response.body.data.expenses as ExpenseListItemDto[];
+      expect(expenses.length).toBe(1);
+      expect(expenses[0].note).toBe('Exp B');
+    });
+
+    it('should not return soft deleted expenses in the list or total', async () => {
+      const response = await request(app)
+        .get('/api/v1/expenses')
+        .set('Authorization', `Bearer ${token1}`);
+
+      expect(response.status).toBe(200);
+      const expenses = response.body.data.expenses as ExpenseListItemDto[];
+      expect(expenses.length).toBe(5);
+      expect(response.body.data.pagination.total).toBe(5);
+      expect(expenses.some((expense) => expense.id === softDeletedExpenseId)).toBe(false);
+    });
+
+    it('should return null snapDetails when snapId is null', async () => {
+      const response = await request(app)
+        .get('/api/v1/expenses')
+        .set('Authorization', `Bearer ${token1}`);
+
+      const expenses = response.body.data.expenses as ExpenseListItemDto[];
+      const itemWithNoSnap = expenses.find((item: ExpenseListItemDto) => item.note === 'Exp A');
+      expect(itemWithNoSnap).toBeDefined();
+      expect(itemWithNoSnap!.snapId).toBeNull();
+      expect(itemWithNoSnap!.snapDetails).toBeNull();
+    });
+
+    it('should return deleted snapDetails when snapId is not null', async () => {
+      const response = await request(app)
+        .get('/api/v1/expenses')
+        .set('Authorization', `Bearer ${token1}`);
+
+      const expenses = response.body.data.expenses as ExpenseListItemDto[];
+      const itemWithSnap = expenses.find((item: ExpenseListItemDto) => item.note === 'Exp E');
+      expect(itemWithSnap).toBeDefined();
+      expect(itemWithSnap!.snapId).toBe('11111111-1111-1111-1111-111111111111');
+      expect(itemWithSnap!.snapDetails).toEqual({
+        snapDeleted: true,
+        imageUrl: null,
+      });
+    });
+
+    it('should order expenses by date DESC, created_at DESC, id DESC', async () => {
+      const response = await request(app)
+        .get('/api/v1/expenses')
+        .set('Authorization', `Bearer ${token1}`);
+
+      const expenses = response.body.data.expenses as ExpenseListItemDto[];
+      const seeded = expenses.filter((item: ExpenseListItemDto) =>
+        ['Exp A', 'Exp B', 'Exp C', 'Exp D', 'Exp E'].includes(item.note || ''),
+      );
+
+      const notes = seeded.map((item: ExpenseListItemDto) => item.note);
+      expect(notes).toEqual(['Exp E', 'Exp D', 'Exp C', 'Exp B', 'Exp A']);
     });
   });
 });

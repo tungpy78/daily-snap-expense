@@ -202,7 +202,7 @@
     *   **Module ảnh hưởng**: Expense Module
     *   **Test**: Gửi query có filter category, kiểm tra danh sách trả về có phân trang chính xác.
     *   **Dependency**: T-6.2
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-6.4**: API Cập nhật chi tiêu (`PUT /api/v1/expenses/:id`)
     *   **Mục tiêu**: Thay đổi thông tin chi tiêu đã ghi.
     *   **Mô tả**: Cho phép sửa các trường chi tiêu, bắt buộc kiểm tra quyền sở hữu bản ghi.

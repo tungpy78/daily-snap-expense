@@ -1939,3 +1939,185 @@ lint: pass
 test: 9 suites passed, 118 tests passed
 build: pass
 ```
+
+---
+
+## Review: T-6.3 - API Lấy danh sách chi tiêu
+
+### Date
+2026-06-15
+
+### Tóm tắt triển khai
+* Đã thêm endpoint:
+```txt
+GET /api/v1/expenses
+```
+* Endpoint protected bằng `authMiddleware`.
+* Có validation query bằng `validateRequest(listExpensesSchema)`.
+* API cho phép user lấy danh sách chi tiêu cá nhân.
+* Hỗ trợ phân trang và filter.
+* Không tạo migration mới.
+* Không tạo API update/delete expense.
+* Không tạo Snap model/repository/service.
+
+### Query params
+Ghi nhận API hỗ trợ:
+```txt
+startDate: YYYY-MM-DD, optional
+endDate: YYYY-MM-DD, optional
+categoryId: UUID, optional
+limit: number, default 20, min 1, max 100
+offset: number, default 0, min 0
+```
+Ghi nhận validator xử lý:
+* Query param từ Express là string nên đã preprocess/transform `limit` và `offset` sang number.
+* Validate `startDate <= endDate` nếu truyền cả hai.
+* Query sai format trả `400 VALIDATION_ERROR`.
+
+### Kiến trúc
+Ghi nhận tuân thủ luồng:
+```txt
+Route -> authMiddleware -> validateRequest -> Controller -> Service -> Repository -> Model/Database
+```
+Trong đó:
+* Route gắn `authMiddleware` và `validateRequest(listExpensesSchema)`.
+* Controller lấy `req.user.id` và validated query, gọi service.
+* Service xử lý mapping safe DTO và snapDetails.
+* Repository query DB qua Expense model.
+* Service không query Sequelize model trực tiếp.
+* Controller không chứa business logic.
+
+### Files đã sửa
+Ghi nhận các file đã mở rộng:
+```txt
+src/modules/expenses/dtos/expense.dto.ts
+src/modules/expenses/validators/expense.validator.ts
+src/modules/expenses/repositories/expense.repository.ts
+src/modules/expenses/services/expense.service.ts
+src/modules/expenses/controllers/expense.controller.ts
+src/modules/expenses/routes/expense.routes.ts
+src/modules/expenses/routes/expense.routes.spec.ts
+```
+
+### DTO
+Ghi nhận đã thêm các DTO/type:
+```txt
+ExpenseSnapDetailsDto
+ExpenseListItemDto
+ExpenseListQueryDto
+ExpenseListResponseDto
+```
+Response item gồm:
+```txt
+id
+amount
+categoryId
+note
+date
+snapId
+snapDetails
+createdAt
+```
+Không leak internal fields:
+```txt
+user_id
+category_id
+snap_id
+deleted_at
+updated_at
+```
+
+### Repository query
+Ghi nhận repository method list dùng điều kiện bắt buộc:
+```txt
+user_id = currentUserId
+```
+Optional filters:
+```txt
+category_id = categoryId
+date >= startDate
+date <= endDate
+```
+Ghi nhận không check quyền category khi filter `categoryId`, để tránh leak dữ liệu. Nếu filter bằng category của user khác thì kết quả tự nhiên là empty list.
+
+### Pagination
+Ghi nhận response có metadata:
+```txt
+total
+limit
+offset
+```
+Ghi nhận `limit` default là 20, max 100. `offset` default là 0.
+
+### Soft delete
+Ghi nhận Expense model dùng `paranoid: true`.
+API list không bật `paranoid: false`, nên:
+* Expense đã soft delete không xuất hiện trong `expenses`.
+* Expense đã soft delete không được tính vào `pagination.total`.
+
+### Order
+Ghi nhận order ổn định:
+```txt
+date DESC
+created_at DESC
+id DESC
+```
+
+### snapDetails logic
+Vì bảng `snaps` chưa tồn tại, ghi nhận logic tạm thời:
+```txt
+Nếu snapId === null:
+  snapDetails = null
+
+Nếu snapId !== null:
+  snapDetails = {
+    snapDeleted: true,
+    imageUrl: null
+  }
+```
+Không tạo Snap model/repository/service trong task này.
+
+### Test cases
+Ghi nhận integration tests đã bao phủ:
+1. Không có Authorization header -> 401 `UNAUTHORIZED`.
+2. Token không hợp lệ -> 401 `INVALID_TOKEN`.
+3. `startDate` sai format -> 400 `VALIDATION_ERROR`.
+4. `endDate` sai format -> 400 `VALIDATION_ERROR`.
+5. `startDate > endDate` -> 400 `VALIDATION_ERROR`.
+6. `categoryId` sai UUID -> 400 `VALIDATION_ERROR`.
+7. `limit` không phải số nguyên -> 400 `VALIDATION_ERROR`.
+8. `limit <= 0` -> 400 `VALIDATION_ERROR`.
+9. `limit > 100` -> 400 `VALIDATION_ERROR`.
+10. `offset` không phải số nguyên -> 400 `VALIDATION_ERROR`.
+11. `offset < 0` -> 400 `VALIDATION_ERROR`.
+12. Lấy danh sách thành công -> 200.
+13. Chỉ trả expense của user hiện tại.
+14. Pagination đúng `total`, `limit`, `offset`.
+15. Filter theo `categoryId` đúng.
+16. Filter theo `startDate`, `endDate` đúng.
+17. Kết hợp nhiều filter đúng.
+18. Soft deleted expense không xuất hiện và không tính vào total.
+19. `snapId = null` -> `snapDetails = null`.
+20. `snapId != null` -> `snapDetails = { snapDeleted: true, imageUrl: null }`.
+21. Response không leak internal fields.
+22. Order ổn định theo `date DESC`, `created_at DESC`, `id DESC`.
+23. Cleanup sạch dữ liệu test.
+
+### Technical note
+Ghi nhận các lỗi đã sửa trong quá trình nghiệm thu:
+* Có warning `no-explicit-any` trong `expense.routes.spec.ts`.
+* Đã thay `any` bằng DTO/type cụ thể, dùng `ExpenseListItemDto` và `Record<string, unknown>` khi cần kiểm tra field leak.
+* Test soft delete ban đầu mâu thuẫn expectation: `expenses.length = 0` nhưng `pagination.total = 5`.
+* Đã sửa theo hướng test danh sách tổng: seeded 6 expense, soft delete 1, API trả 5 active expenses và không chứa `softDeletedExpenseId`.
+* Đã chống flaky order bằng cách seed `created_at` rõ ràng, tránh UUID random làm thứ tự không ổn định.
+* Đã tách dữ liệu GET tests để tránh bị ô nhiễm bởi POST tests trước đó.
+
+### Kết quả nghiệm thu
+```txt
+format: pass
+format:check: pass
+lint: pass
+expense test riêng: 1 suite passed, 36 tests passed
+full test: 9 suites passed, 139 tests passed
+build: pass
+```

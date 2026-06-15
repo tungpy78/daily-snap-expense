@@ -27,4 +27,43 @@ export const createExpenseSchema = {
   }),
 };
 
+export const listExpensesSchema = {
+  query: z
+    .object({
+      startDate: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày bắt đầu phải có định dạng YYYY-MM-DD.')
+        .optional(),
+      endDate: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày kết thúc phải có định dạng YYYY-MM-DD.')
+        .optional(),
+      categoryId: z.string().uuid('Mã danh mục không hợp lệ (phải là UUID).').optional(),
+      limit: z.coerce
+        .number({ invalid_type_error: 'Limit phải là số.' })
+        .int('Limit phải là số nguyên.')
+        .min(1, 'Limit phải lớn hơn hoặc bằng 1.')
+        .max(100, 'Limit không được vượt quá 100.')
+        .default(20),
+      offset: z.coerce
+        .number({ invalid_type_error: 'Offset phải là số.' })
+        .int('Offset phải là số nguyên.')
+        .min(0, 'Offset phải lớn hơn hoặc bằng 0.')
+        .default(0),
+    })
+    .refine(
+      (data) => {
+        if (data.startDate && data.endDate) {
+          return data.startDate <= data.endDate;
+        }
+        return true;
+      },
+      {
+        message: 'Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc.',
+        path: ['startDate'],
+      },
+    ),
+};
+
 export type CreateExpenseSchemaType = typeof createExpenseSchema;
+export type ListExpensesSchemaType = typeof listExpensesSchema;
