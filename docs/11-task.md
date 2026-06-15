@@ -266,7 +266,7 @@
     *   **Module ảnh hưởng**: DB Module (Migrations)
     *   **Test**: Chạy migration thành công.
     *   **Dependency**: T-2.2
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-8.2**: API Gửi lời mời kết bạn (`POST /api/v1/friends/request`)
     *   **Mục tiêu**: Bắt đầu thiết lập kết nối bạn bè.
     *   **Mô tả**: Nhận email/username người nhận, kiểm tra tài khoản tồn tại, tạo bản ghi trạng thái `PENDING`.

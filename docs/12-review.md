@@ -3064,4 +3064,61 @@ npm run test: 11 suites passed, 214 tests passed
 build: pass
 ```
 
+---
+
+## Review: T-8.1 - Tạo migration cho bảng friendships
+
+### Date
+2026-06-16
+
+### Tóm tắt triển khai
+Đã tạo migration:
+[20260616000000-create-friendships.js](file:///d:/vibe%20Coding/backend/src/shared/database/migrations/20260616000000-create-friendships.js)
+
+Migration tạo bảng:
+`friendships`
+
+Schema:
+```txt
+id UUID PK NOT NULL
+sender_id UUID NOT NULL
+receiver_id UUID NOT NULL
+status ENUM('pending', 'accepted', 'rejected') NOT NULL DEFAULT 'pending'
+created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+```
+
+Foreign keys:
+- `sender_id` -> `users.id` (ON DELETE CASCADE, ON UPDATE CASCADE)
+- `receiver_id` -> `users.id` (ON DELETE CASCADE, ON UPDATE CASCADE)
+
+Constraint/index:
+- `friendships_sender_id_fk`
+- `friendships_receiver_id_fk`
+- `friendships_sender_receiver_unique` trên `(sender_id, receiver_id)`
+- `friendships_receiver_id_index` trên `receiver_id`
+
+### Phạm vi task
+Task này chỉ làm migration. Cam kết:
+- Không tạo Friendship model.
+- Không tạo API.
+- Không tạo repository/service/controller/validator/route.
+- Không sửa `app.ts`.
+- Không sửa `.env`.
+- Không sửa migration cũ.
+
+### Kết quả nghiệm thu
+```txt
+db:migrate: pass
+db:migrate:status: migration T-8.1 up
+db:migrate:undo: pass
+db:migrate lại: pass
+format: pass
+format:check: pass
+lint: pass
+test: 11 suites passed, 214 tests passed
+build: pass
+```
+
+
 
