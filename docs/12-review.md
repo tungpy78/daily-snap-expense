@@ -1009,5 +1009,77 @@ Nghiệm thu toàn bộ kiểm thử trên môi trường thực tế:
 ### Decision
 - Approved (Middleware hoạt động tốt, pass toàn bộ 50/50 test cases, sạch lỗi lint/format/build).
 
+---
 
+## Review: T-4.1 - API lấy thông tin Profile cá nhân
 
+### Date
+2026-06-15
+
+### Summary
+Phát triển hoàn chỉnh API lấy thông tin Profile cá nhân (`GET /api/v1/users/profile`) cho người dùng đã đăng nhập, bảo vệ bởi `authMiddleware`, đảm bảo dữ liệu phản hồi an toàn qua DTO và tuân thủ nghiêm ngặt mô hình phân tầng Layered Architecture.
+
+### Files Changed
+- `backend/src/modules/users/dtos/user.dto.ts` (Tạo mới DTO)
+- `backend/src/modules/users/services/user.service.ts` (Tạo mới Service)
+- `backend/src/modules/users/controllers/user.controller.ts` (Tạo mới Controller)
+- `backend/src/modules/users/routes/user.routes.ts` (Tạo mới Router)
+- `backend/src/modules/users/routes/user.routes.spec.ts` (Tạo mới Integration test suite)
+- `backend/src/app.ts` (Đăng ký router `/api/v1/users`)
+
+### Architecture
+Tuân thủ luồng backend chuẩn:
+`Route -> authMiddleware -> Controller -> Service -> Repository -> Model/Database`
+Trong đó:
+- Route `/profile` gắn `authMiddleware` bảo vệ.
+- Controller tiếp nhận request, lấy `req.user.id` và gọi tới `UserService.getUserProfile(userId)`. Controller hoàn toàn không chứa business logic và không import Sequelize Model.
+- Service xử lý logic nghiệp vụ, gọi `UserRepository.findById` để lấy thông tin. Service hoàn toàn không import Sequelize Model.
+- Repository (`UserRepository`) là tầng duy nhất giao tiếp, import và query trên Sequelize `User` model.
+
+### DTO response an toàn
+API trả về DTO an toàn có cấu trúc:
+```ts
+{
+  id: string;
+  username: string;
+  email: string;
+  avatarUrl: string | null;
+  createdAt: string;
+}
+```
+Cam kết bảo mật:
+- Không trả về `password_hash`, `passwordHash` để tránh rò rỉ thông tin đăng nhập.
+- Không trả về `deleted_at`, `deletedAt` là metadata lưu vết soft delete.
+- Không trả về `role` (vì tài liệu API T-4.1 không yêu cầu).
+- Không trả về tokens (`accessToken`, `refreshToken`) và refresh token metadata.
+
+### Error handling
+- Thiếu header Authorization hoặc không gửi token -> Trả về mã lỗi HTTP 401 `UNAUTHORIZED`.
+- Token không đúng định dạng/malformed -> Trả về mã lỗi HTTP 401 `INVALID_TOKEN`.
+- Token hết hạn sử dụng -> Trả về mã lỗi HTTP 401 `TOKEN_EXPIRED`.
+- User tương ứng bị vô hiệu hóa (`is_active = false`) -> Bị chặn bởi `authMiddleware`, trả về mã lỗi HTTP 401 `USER_INACTIVE`.
+- User không tồn tại trong DB khi service truy vấn -> Trả về mã lỗi HTTP 404 `USER_NOT_FOUND`.
+
+### Test cases
+Đã bổ sung 5 integration test cases bao phủ toàn diện cho endpoint `GET /api/v1/users/profile`:
+1. Không có Authorization header -> HTTP 401.
+2. Token malformed -> HTTP 401.
+3. Token hết hạn -> HTTP 401 `TOKEN_EXPIRED`.
+4. Token hợp lệ -> HTTP 200 và phản hồi đúng cấu trúc DTO an toàn.
+5. User bị inactive -> HTTP 401 `USER_INACTIVE`.
+Các test case có cơ chế dọn dẹp dữ liệu test khỏi database (`force: true` hard delete) và đóng kết nối Sequelize an toàn sau khi hoàn thành.
+
+### Technical Notes
+1. **Tránh treo Jest và Open Handles**: Không sử dụng `jest.useFakeTimers()` trong integration test tích hợp Supertest/Sequelize vì dễ gây nghẽn luồng bất đồng bộ, làm các test cases sau hoặc hook `afterAll` bị timeout.
+2. **Ký expired token deterministic**: Test case hết hạn token được giải quyết bằng cách ký trực tiếp bằng `jsonwebtoken` với tham số `{ expiresIn: '-1s' }`.
+3. **Tránh lỗi chữ ký không hợp lệ (INVALID_TOKEN)**: Đảm bảo lấy đúng thuộc tính `accessSecret` từ singleton instance của `tokenService` tại runtime để ký expired token. Việc này giúp tránh sự không đồng nhất về cấu hình môi trường giữa thời điểm import module và thời điểm chạy `beforeAll`.
+4. **Xử lý mapping thuộc tính Sequelize**: Do Sequelize map cột `created_at` sang thuộc tính `createdAt` (camelCase) ở JS runtime object, việc truy xuất `user.created_at` trực tiếp ở JS sẽ trả về `undefined` và gây crash lỗi 500 khi gọi `.toISOString()`. Đã khắc phục bằng cách sử dụng `user.getDataValue('created_at')` và kiểm tra kiểu dữ liệu để parse bằng `new Date` an toàn trước khi map.
+
+### Kết quả nghiệm thu
+Nghiệm thu toàn bộ trên máy thật thành công 100%:
+- `npm run format`: pass.
+- `npm run format:check`: pass.
+- `npm run lint`: pass.
+- `npm run test`: pass. (5 test suites, 55 tests pass).
+- `npm run build`: pass.
+- Hoàn toàn sạch lỗi timeout và rò rỉ tài nguyên (worker leak/open handles).

@@ -131,7 +131,7 @@
     *   **Module ảnh hưởng**: User Module
     *   **Test**: Integration test gọi API profile của chính mình trả về dữ liệu đúng cấu trúc.
     *   **Dependency**: T-3.6
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-4.2**: Tích hợp Multer và thiết lập lớp trừu tượng `StorageService`
     *   **Mục tiêu**: Xử lý tải file ảnh lên server.
     *   **Mô tả**: Thiết lập `multer` middleware đón file ảnh. Viết interface `StorageService` và cài đặt `LocalStorageProvider` để lưu ảnh cục bộ vào thư mục static.
