@@ -40,11 +40,7 @@ describe('Expense Integration Tests', () => {
     process.env.JWT_ACCESS_EXPIRES_IN = '15m';
     process.env.JWT_REFRESH_EXPIRES_IN = '7d';
 
-    // Clean up if any dirty state left
-    await Expense.destroy({
-      where: {},
-      force: true,
-    });
+    // Clean up stale data from previous interrupted runs (FK-safe order: snaps -> categories -> users)
     await sequelize.query('DELETE FROM snaps WHERE id = ? OR id = ?', {
       replacements: [testGetSnapId, testPutSnapId],
     });
@@ -104,9 +100,9 @@ describe('Expense Integration Tests', () => {
 
   afterAll(async () => {
     try {
-      // Clean up all created expenses
+      // Clean up expenses scoped to this suite's users only
       await Expense.destroy({
-        where: {},
+        where: { user_id: [user1.id, user2.id] },
         force: true,
       });
 
@@ -394,8 +390,8 @@ describe('Expense Integration Tests', () => {
 
   describe('GET /api/v1/expenses', () => {
     beforeAll(async () => {
-      // Clear all expenses so we have a completely clean state for query tests
-      await Expense.destroy({ where: {}, force: true });
+      // Clear this suite's expenses for a clean GET test state
+      await Expense.destroy({ where: { user_id: [user1.id, user2.id] }, force: true });
 
       // Seed snaps first
       await sequelize.query(
@@ -778,7 +774,7 @@ describe('Expense Integration Tests', () => {
     });
 
     afterAll(async () => {
-      await Expense.destroy({ where: {}, force: true });
+      await Expense.destroy({ where: { user_id: [user1.id, user2.id] }, force: true });
       await sequelize.query('DELETE FROM snaps WHERE id = ?', {
         replacements: [testGetSnapId],
       });
@@ -1086,7 +1082,7 @@ describe('Expense Integration Tests', () => {
     });
 
     afterAll(async () => {
-      await Expense.destroy({ where: {}, force: true });
+      await Expense.destroy({ where: { user_id: [user1.id, user2.id] }, force: true });
       await sequelize.query('DELETE FROM snaps WHERE id = ?', {
         replacements: [testPutSnapId],
       });
@@ -1099,9 +1095,9 @@ describe('Expense Integration Tests', () => {
 
     beforeEach(async () => {
       // Seed test expenses specifically for DELETE tests
-      // Clean up previous test expenses to avoid pollution
+      // Clean up only this suite's previous test expenses to avoid cross-suite pollution
       await Expense.destroy({
-        where: {},
+        where: { user_id: [user1.id, user2.id] },
         force: true,
       });
 

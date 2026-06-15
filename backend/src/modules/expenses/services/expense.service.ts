@@ -1,6 +1,7 @@
 import { ExpenseRepository } from '../repositories/expense.repository';
 import { CategoryRepository } from '../../categories/repositories/category.repository';
 import { AppError } from '../../../shared/utils/appError';
+import type { Transaction } from 'sequelize';
 import type {
   CreateExpenseDto,
   ExpenseDto,
@@ -18,6 +19,7 @@ export class ExpenseService {
   public static async createManualExpense(
     userId: string,
     dto: CreateExpenseDto,
+    transaction?: Transaction,
   ): Promise<ExpenseDto> {
     // 1. Check if category exists
     const category = await CategoryRepository.findById(dto.categoryId);
@@ -44,14 +46,17 @@ export class ExpenseService {
     }
 
     // 4. Create in DB
-    const expense = await ExpenseRepository.create({
-      user_id: userId,
-      category_id: dto.categoryId,
-      amount: dto.amount,
-      note,
-      date: expenseDate,
-      snap_id: snapId,
-    });
+    const expense = await ExpenseRepository.create(
+      {
+        user_id: userId,
+        category_id: dto.categoryId,
+        amount: dto.amount,
+        note,
+        date: expenseDate,
+        snap_id: snapId,
+      },
+      transaction,
+    );
 
     // 5. Return mapped safe DTO
     return {

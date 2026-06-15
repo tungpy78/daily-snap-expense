@@ -131,3 +131,24 @@ Tuân thủ mô hình phân tầng **Layered Architecture**:
   - Không tự ý xóa các file mã nguồn hoặc thư mục tài liệu cấu trúc dự án khi chưa có sự thảo luận hoặc phê duyệt.
   - Không tự ý cài đặt thêm các package/dependencies mới bên ngoài danh sách tech stack đã thống nhất nếu không có lý do thực sự cần thiết và phải được báo cáo trước.
 * **Tuân thủ kiến trúc**: Không tự ý thay đổi cấu trúc thư mục, các quy tắc dependency layer hoặc thay đổi API contract mà chưa cập nhật trước vào tài liệu thiết kế trong `docs/`.
+
+---
+
+## 9. Quy tắc phòng tránh lỗi lặp lại (Anti-regression & Test Isolation)
+Để tránh các lỗi hệ thống, lỗi kiểm thử không ổn định (flaky tests) hoặc lỗi logic tái diễn, bắt buộc tuân thủ các quy tắc sau:
+
+### Cô lập dữ liệu kiểm thử (Test Isolation)
+* **Không dùng dữ liệu cố định generic**: Các test suite mới không được dùng fixed ID/email/username generic có khả năng trùng với suite khác (ví dụ: `testuser`, `user1@example.com`, `11111111-1111-1111-1111-111111111111`).
+* **Sử dụng UUID động**: Test suite mới phải dùng `randomUUID()` để tạo suffix riêng biệt hoặc prefix duy nhất theo từng suite cho tất cả IDs, usernames, emails.
+* **Không dọn dẹp diện rộng (Broad Table Wipes)**: Tuyệt đối không gọi `Model.destroy({ where: {}, force: true })` dọn sạch toàn bộ bảng dữ liệu trong integration test khi Jest chạy parallel (gây ảnh hưởng trực tiếp tới dữ liệu của test suite khác đang chạy song song).
+* **Cleanup có phạm vi (Scoped Cleanup)**: Mọi thao tác dọn dẹp dữ liệu (cleanup) phải giới hạn cụ thể theo danh sách IDs/emails do chính test suite đó tạo ra.
+* **Không xóa toàn bộ thư mục upload**: Không thực hiện xóa trắng thư mục upload trong quá trình test; chỉ xóa các file ảnh cụ thể do chính test suite đó sinh ra.
+* **Xử lý khi chạy parallel fail**: Nếu test riêng lẻ pass và `npx jest --runInBand` pass nhưng chạy song song `npm run test` fail, phải ưu tiên kiểm tra vấn đề test isolation và cross-suite pollution (ô nhiễm chéo giữa các suite).
+
+### Viết mã kiểm thử sạch
+* **Không khai báo biến thừa**: Không khai báo các biến test không thực sự sử dụng (như `token2`, `user2`, `category2`) trong file spec.
+* **Không dùng thủ thuật né tránh linter**: Không sử dụng `void variable` hoặc comment `eslint-disable` chỉ để né tránh cảnh báo unused variable của linter.
+
+### Logic Nghiệp vụ & Xử lý lỗi (Validation & Rollback)
+* **Zod Preprocess & Default**: Khi thiết kế Zod preprocess kết hợp với giá trị mặc định (`.default()`), tuyệt đối không return `undefined` cho các giá trị không hợp lệ (invalid value) vì điều này sẽ khiến Zod tự động kích hoạt giá trị default và bỏ qua lỗi. Phải giữ nguyên giá trị không hợp lệ để Zod thực hiện báo lỗi validation chuẩn.
+* **Kiểm thử Rollback File**: Với kịch bản test rollback upload file, nếu muốn kiểm tra hàm `deleteImage` được gọi khi có lỗi phát sinh sau đó, thì lỗi mock/thực tế phải xảy ra tại thời điểm hoặc sau khi file đã được upload thành công lên disk (để đảm bảo có file thực sự cần cleanup).

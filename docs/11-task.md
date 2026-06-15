@@ -241,7 +241,7 @@
     *   **Module ảnh hưởng**: Snap Module, Expense Module
     *   **Test**: Gửi request hợp lệ (tạo thành công cả hai). Gửi mảng `expenses` có lỗi (ví dụ: category sai) $\rightarrow$ kiểm tra xem snap có bị rollback không tạo thành công.
     *   **Dependency**: T-7.2, T-6.2
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-7.4**: API Lấy dòng thời gian cá nhân (`GET /api/v1/snaps/timeline`)
     *   **Mục tiêu**: Hiển thị nhật ký ảnh và tài chính của người dùng theo ngày.
     *   **Mô tả**: Lấy danh sách snaps chưa bị xóa mềm, JOIN các expenses tương ứng chưa bị xóa mềm. Sắp xếp mới nhất ở trên.

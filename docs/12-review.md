@@ -2680,3 +2680,57 @@ lint: pass
 full test: 10 suites passed, 171 tests passed
 build: pass
 ```
+
+---
+
+## Review: T-7.3 - API Đăng Snap kèm Chi tiêu (POST /api/v1/snaps)
+
+### Date
+2026-06-15
+
+### Summary
+Triển khai hoàn chỉnh API đăng Snap kèm chi tiêu (`POST /api/v1/snaps`), cho phép người dùng tải lên hình ảnh Snap cùng với các trường metadata (`caption`, `isPrivate`) và mảng chi tiêu liên kết (`expenses` dưới dạng chuỗi JSON). API được bảo vệ bởi `authMiddleware` và xử lý multipart/form-data qua `uploadImageMiddleware`. Quá trình tạo Snap và các chi tiêu liên quan được bọc trong một **Sequelize Transaction** tại `SnapService` để đảm bảo dữ liệu toàn vẹn, thực hiện rollback và xóa file ảnh khỏi disk nếu gặp lỗi ghi database.
+
+### Files Changed
+- `backend/src/modules/snaps/routes/snap.routes.ts` (Tạo mới)
+- `backend/src/modules/snaps/controllers/snap.controller.ts` (Tạo mới)
+- `backend/src/modules/snaps/services/snap.service.ts` (Tạo mới)
+- `backend/src/modules/snaps/repositories/snap.repository.ts` (Tạo mới)
+- `backend/src/modules/snaps/validators/snap.validator.ts` (Tạo mới)
+- `backend/src/modules/snaps/routes/snap.routes.spec.ts` (Tạo mới)
+- `backend/src/routes/index.ts` (Sửa đổi: Đăng ký router snap)
+- `backend/src/modules/expenses/routes/expense.routes.spec.ts` (Sửa đổi: Cô lập clean up để chạy song song)
+
+### What Went Well
+- Triển khai đúng chuẩn Layered Architecture: `Route -> AuthMiddleware -> UploadMiddleware -> ValidationMiddleware -> Controller -> Service -> Repository -> Model`.
+- Triển khai cơ chế transaction toàn vẹn tại `SnapService`. Khi việc tạo chi tiêu đính kèm thất bại, snap record được rollback hoàn toàn và file ảnh đã lưu trên disk được tự động xóa bỏ qua helper dọn dẹp.
+- Khắc phục triệt để lỗi ô nhiễm chéo giữa các test suite khi chạy parallel thông qua việc sử dụng UUID suffix cho test data và áp dụng scoped cleanup giới hạn theo ID/User tạo trong suite.
+
+### Issues Found & Resolved
+- *Lỗi validation `isPrivate`*: Ban đầu validation schema dùng preprocess trả về `undefined` cho các chuỗi không hợp lệ, kích hoạt giá trị mặc định `true` của Zod khiến request invalid được chấp nhận (trả về 201). Đã sửa lại để preprocess trả về giá trị gốc nếu không phải chuỗi rỗng/undefined, cho phép Zod bắt lỗi validation và trả về `400 VALIDATION_ERROR`.
+- *Lỗi ô nhiễm dữ liệu khi chạy test parallel*: Do suite snap và suite expense sử dụng các email/username tĩnh trùng lặp và gọi hàm xóa toàn bảng `Expense.destroy({ where: {} })`. Đã sửa lại toàn bộ hai spec file để sử dụng suffix UUID ngẫu nhiên và dọn dẹp dữ liệu theo phạm vi ID/User được tạo cụ thể.
+- *Lỗi mock rollback file upload test*: Test case ban đầu truyền categoryId giả làm lỗi validate trước khi Multer lưu file, nên không thực sự test được việc xóa file trên disk. Đã chuyển sang sử dụng `jest.spyOn(ExpenseService, 'createManualExpense')` để mock ném lỗi sau khi snap và file đã được upload lưu trữ thành công.
+
+### Security Review
+- Authentication: Bắt buộc đi qua `authMiddleware` xác thực JWT.
+- Authorization: Kiểm tra kỹ quyền sở hữu đối với các custom categories đính kèm của chi tiêu (nếu category thuộc người dùng khác thì ném lỗi `403 Forbidden`).
+- Data validation: Xác thực kiểu dữ liệu và định dạng file `.jpg/.jpeg/.png` chặt chẽ ở tầng middleware trước khi chuyển đến controller.
+
+### Performance Review
+- Database: Tận dụng transaction giúp tránh mồ côi dữ liệu. Đã sử dụng index cho các truy vấn kiểm tra quyền sở hữu category.
+- File handling: Sử dụng local storage lưu trữ file và dọn dẹp tệp tin dư thừa/lỗi kịp thời để tránh tràn ổ cứng.
+
+### Test Review
+- Unit tests: N/A.
+- Integration tests: Viết integration tests toàn diện (21 cases) bao phủ mọi kịch bản lỗi validation, thiếu quyền, sai định dạng file, thành công và rollback.
+- Chạy thử nghiệm trên máy thật:
+  - Lệnh test riêng lẻ: `npx jest src/modules/snaps/routes/snap.routes.spec.ts --runInBand --verbose` -> Pass.
+  - Lệnh test parallel: `npm run test` -> Pass (11 suites passed, 192 tests passed).
+
+### Documentation Updated
+- Yes.
+- Files: `docs/10-coding-rule.md`, `docs/11-task.md`, `docs/12-review.md`.
+
+### Decision
+- Approved.
+```
