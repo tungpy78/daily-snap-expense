@@ -1173,3 +1173,98 @@ Nghiệm thu toàn bộ trên máy thật thành công 100:
 - `npm run test`: pass (7 test suites, 71 tests pass).
 - `npm run build`: pass.
 - Sạch lỗi treo Jest, worker leak, hay open handles.
+
+---
+
+## Review: T-4.3 - API Cập nhật Profile
+
+### Date
+2026-06-15
+
+### Summary
+Triển khai hoàn chỉnh API Cập nhật Profile (`PUT /api/v1/users/profile`) cho phép người dùng thay đổi tên hiển thị (username) và tải lên hình ảnh đại diện (avatar) thông qua middleware upload và dịch vụ `StorageService` cục bộ.
+
+### Files Changed
+- `src/modules/users/validators/user.validator.ts`
+- `src/modules/users/dtos/user.dto.ts`
+- `src/modules/users/repositories/user.repository.ts`
+- `src/modules/users/services/user.service.ts`
+- `src/modules/users/controllers/user.controller.ts`
+- `src/modules/users/routes/user.routes.ts`
+- `src/modules/users/routes/user.routes.spec.ts`
+
+### Middleware Order
+Tuân thủ nghiêm ngặt thứ tự middleware bắt buộc:
+`Route -> authMiddleware -> uploadImageMiddleware('avatar') -> validateRequest(updateProfileSchema) -> Controller -> Service -> Repository -> Model/Database`
+*Lý do:* Multer (`uploadImageMiddleware`) cần chạy trước Zod (`validateRequest`) để parse dữ liệu text fields (như `username`) từ multipart form-data vào `req.body`.
+
+### Validator
+`updateProfileSchema` quy định:
+- `username`: optional, trim khoảng trắng, chuyển về lowercase, tối thiểu 3 ký tự, tối đa 50 ký tự, chỉ cho phép chữ cái, số, dấu gạch dưới.
+- Controller kiểm tra: Yêu cầu bắt buộc ít nhất một trong hai trường `username` hoặc `avatar` phải có.
+
+### Service Flow
+1. Lấy thông tin user hiện tại bằng `UserRepository.findById`.
+2. Kiểm tra tồn tại của user.
+3. Nếu có username: chuẩn hóa, so sánh và kiểm tra trùng lặp với người dùng khác. Hỗ trợ trường hợp gửi trùng username hiện tại của chính mình.
+4. Chỉ thực hiện upload avatar sau khi validate username thành công.
+5. Nếu có avatar: upload avatar mới vào thư mục `avatars` qua `LocalStorageProvider` và nhận `newAvatarUrl`.
+6. Thực hiện update DB.
+7. Nếu DB update lỗi: tự động xóa file avatar mới vừa tải lên.
+8. Nếu DB update thành công: tự động xóa file avatar cũ nếu tồn tại. Lỗi xóa file cũ được catch an toàn không làm fail request chính.
+9. Không import Sequelize Model trong Service layer.
+
+### Repository
+- Mở rộng phương thức `updateProfileById(userId, data)` để thực hiện update profile.
+- Repository vẫn là tầng duy nhất query trên Sequelize User Model.
+
+### Response DTO
+Response chỉ trả safe DTO:
+```json
+{
+  "id": "string",
+  "username": "string",
+  "avatarUrl": "string | null"
+}
+```
+*Không trả về*: `email`, `password_hash`, `role`, `is_active`, `deleted_at`, `created_at`, `updated_at`, hay tokens.
+
+### Error Handling
+- Không gửi username/avatar -> 400.
+- Username không hợp lệ -> 400 `VALIDATION_ERROR`.
+- Username trùng -> 400 `USERNAME_ALREADY_EXISTS`.
+- Avatar sai định dạng -> 400 `INVALID_FILE_TYPE`.
+- Avatar quá 5MB -> 400 `FILE_TOO_LARGE`.
+- Thiếu/sai token -> 401 `UNAUTHORIZED` / `INVALID_TOKEN`.
+
+### Test Cases
+Bổ sung 15 integration test cases trong `user.routes.spec.ts`:
+1. Cập nhật chỉ username thành công.
+2. Cập nhật chỉ avatar thành công.
+3. Cập nhật cả username và avatar thành công.
+4. Không gửi username và avatar -> 400.
+5. Username quá ngắn -> 400.
+6. Username quá dài -> 400.
+7. Username chứa ký tự đặc biệt -> 400.
+8. Username trùng user khác -> 400 `USERNAME_ALREADY_EXISTS`.
+9. Gửi lại username hiện tại của chính mình -> thành công.
+10. Avatar sai định dạng -> 400 `INVALID_FILE_TYPE`.
+11. Avatar quá 5MB -> 400 `FILE_TOO_LARGE`.
+12. Thiếu Authorization header -> 401.
+13. Token không hợp lệ -> 401.
+14. Avatar cũ được xóa sau khi cập nhật avatar mới.
+15. Nếu DB update lỗi sau khi upload avatar mới -> avatar mới được cleanup.
+16. Dọn dẹp tài khoản test/file ảnh test sau suite (`afterAll`).
+
+### Technical Notes
+Trong quá trình nghiệm thu, linter báo lỗi do khai báo biến `err` không dùng tới trong block `catch (err) {}`. Đã sửa lại bằng Optional Catch Binding `catch {}`.
+
+### Kết quả nghiệm thu
+Nghiệm thu thành công 100% trên máy thật:
+- `npm run format`: pass
+- `npm run format:check`: pass
+- `npm run lint`: pass
+- `npm run test`: pass (7 test suites, 86 tests pass)
+- `npm run build`: pass
+- `npm run dev`: pass
+

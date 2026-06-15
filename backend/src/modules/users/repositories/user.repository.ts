@@ -65,4 +65,15 @@ export class UserRepository {
       is_active: isActive !== undefined ? isActive : true,
     });
   }
+
+  /**
+   * Updates a user's profile details by user ID and returns the updated User instance.
+   */
+  public static async updateProfileById(
+    userId: string,
+    data: { username?: string; avatar_url?: string | null },
+  ): Promise<User | null> {
+    await User.update(data, { where: { id: userId } });
+    return User.findByPk(userId);
+  }
 }

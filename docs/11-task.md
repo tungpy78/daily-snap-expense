@@ -145,7 +145,7 @@
     *   **Module ảnh hưởng**: User Module
     *   **Test**: Integration test gửi yêu cầu sửa tên và đính kèm file ảnh avatar hợp lệ.
     *   **Dependency**: T-4.1, T-4.2
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 
 ---
 
