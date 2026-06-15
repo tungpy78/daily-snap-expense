@@ -945,5 +945,69 @@ Nghiệm thu toàn bộ kiểm thử trên môi trường thực tế:
 ### Decision
 - Approved (Endpoint Refresh Token và Đăng xuất hoàn thành nghiệm thu xuất sắc trên máy thật, toàn bộ test suite pass 42/42 và sạch lỗi lint/format/build).
 
+---
+
+## Review: T-3.6 - Phát triển authMiddleware chặn truy cập trái phép
+
+### Date
+2026-06-15
+
+### Summary
+Triển khai hoàn chỉnh middleware xác thực yêu cầu (`authMiddleware`) thông qua việc kiểm tra và giải mã Access Token (JWT), gán thông tin định danh của người dùng vào đối tượng request phục vụ các API private phía sau.
+
+### Files Changed
+- `backend/src/types/express.d.ts` (Tạo mới để khai báo kiểu dữ liệu cho req.user)
+- `backend/src/modules/users/repositories/user.repository.ts` (Thêm phương thức findById)
+- `backend/src/middlewares/auth.middleware.ts` (Tạo mới middleware)
+- `backend/src/app.ts` (Đăng ký route test và import authMiddleware)
+- `backend/src/middlewares/auth.middleware.spec.ts` (Tạo mới integration tests cho middleware)
+
+### What Went Well
+- Đã cấu hình Express Request augmentation thành công để khai báo thuộc tính `req.user` an toàn dạng DTO (plain object), bảo vệ ranh giới kiến trúc phần mềm.
+- Đã thêm phương thức `UserRepository.findById` trong Repository của User Module để truy xuất thông tin người dùng bằng Primary Key.
+- Middleware `authMiddleware` đã được xây dựng hoàn chỉnh:
+  - Đọc và phân tích token từ header `Authorization: Bearer <accessToken>`.
+  - Thực hiện xác thực access token qua `TokenService.verifyAccessToken`.
+  - Lấy thông tin user bằng phương thức `UserRepository.findById` (hoàn toàn không import trực tiếp Sequelize model `User` trong middleware).
+  - Kiểm tra xem người dùng có tồn tại trong cơ sở dữ liệu và đang hoạt động (`is_active = true`) hay không.
+  - Gán DTO sạch của người dùng gồm `id`, `username`, `email`, `role` vào `req.user` để các middleware/controller phía sau sử dụng.
+- Đã đăng ký test route `/api/test-auth` nằm trong khối điều kiện môi trường non-production (`process.env.NODE_ENV !== 'production'`) đảm bảo an toàn cho môi trường production.
+- Đã xây dựng bộ kiểm thử tích hợp (integration tests) bao phủ toàn bộ các kịch bản lỗi biên và kịch bản thành công:
+  - Thiếu Authorization header.
+  - Sai định dạng Bearer token.
+  - Token sai chữ ký/signature.
+  - Token hết hạn sử dụng.
+  - Người dùng tương ứng không tồn tại trong database.
+  - Tài khoản người dùng bị khóa/inactive.
+  - Xác thực thành công và trả về DTO đúng.
+- Đã sửa lỗi đường dẫn tương đối (import path) trong file test `auth.middleware.spec.ts` từ `../../` thành `../` giúp quá trình biên dịch (build) thành công.
+
+### Technical Notes
+- Middleware hoạt động như một lớp lọc trung gian và tuyệt đối tuân thủ Layered Architecture: không trực tiếp truy xuất Sequelize Model mà đi qua tầng Repository, đồng thời chỉ truyền dữ liệu plain object (DTO) thay vì truyền đối tượng Sequelize Model Instance vào `req.user`.
+
+### Issues Found
+- Lỗi import path ban đầu của file `auth.middleware.spec.ts` (sử dụng sai `../../` thay vì `../`) làm lỗi build đã được phát hiện và xử lý triệt để.
+- Các log cảnh báo lỗi `console.error` hiển thị trong Jest là hành vi ném lỗi mong muốn và có chủ đích từ các trường hợp kiểm thử negative test cases (như kiểm tra token sai định dạng, token hết hạn, user inactive).
+
+### Security Review
+- Middleware chặn và xử lý kịp thời toàn bộ các trường hợp token không hợp lệ, token hết hạn, user không tồn tại hoặc bị inactive, đảm bảo an toàn tuyệt đối trước khi yêu cầu đi vào controller.
+
+### Performance Review
+- Truy vấn `findById` sử dụng khóa chính `findByPk` tận dụng tối đa Index Cluster của MySQL, đảm bảo hiệu năng truy vấn danh tính user cực kỳ nhanh trên mỗi request.
+
+### Test Review
+Nghiệm thu toàn bộ kiểm thử trên môi trường thực tế:
+- `npm run format` & `npm run format:check` vượt qua thành công (pass).
+- `npm run lint` vượt qua thành công (pass).
+- `npm run test` chạy thành công **4 test suites** và **50 tests** pass sạch sẽ 100% (gồm 42 tests cũ và thêm 8 tests mới cho authMiddleware).
+- `npm run build` biên dịch TypeScript pass 100%.
+
+### Documentation Updated
+- Yes
+- Files: `docs/11-task.md`, `docs/12-review.md`
+
+### Decision
+- Approved (Middleware hoạt động tốt, pass toàn bộ 50/50 test cases, sạch lỗi lint/format/build).
+
 
 

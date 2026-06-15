@@ -25,6 +25,13 @@ export class UserRepository {
   }
 
   /**
+   * Finds a user by their unique ID.
+   */
+  public static async findById(id: string): Promise<User | null> {
+    return User.findByPk(id);
+  }
+
+  /**
    * Finds a user by either username or email (identity).
    * Normalizes identity by trimming and converting to lowercase for consistency.
    */

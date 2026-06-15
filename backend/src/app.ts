@@ -7,6 +7,7 @@ import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
 import { AppError } from './shared/utils/appError';
 import { validateRequest } from './middlewares/validation.middleware';
 import authRoutes from './modules/auth/routes/auth.routes';
+import { authMiddleware } from './middlewares/auth.middleware';
 
 // Load environment variables
 dotenv.config();
@@ -95,6 +96,15 @@ if (process.env.NODE_ENV !== 'production') {
       });
     },
   );
+
+  app.get('/api/test-auth', authMiddleware, (req: Request, res: Response) => {
+    res.status(200).json({
+      success: true,
+      data: {
+        user: req.user,
+      },
+    });
+  });
 }
 
 // Authentication Routes

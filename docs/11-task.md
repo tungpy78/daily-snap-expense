@@ -120,7 +120,7 @@
     *   **Module ảnh hưởng**: Middleware
     *   **Test**: Gọi API được bảo vệ không có token nhận về 401, có token nhận về 200.
     *   **Dependency**: T-3.2
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 
 ---
 
