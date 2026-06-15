@@ -170,7 +170,7 @@
     *   **Module ảnh hưởng**: Category Module
     *   **Test**: Kiểm tra danh sách trả về chứa đủ danh mục mặc định và các danh mục tự tạo của chính user đó.
     *   **Dependency**: T-5.2, T-3.6
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-5.4**: API Tạo danh mục tùy chỉnh (`POST /api/v1/categories`)
     *   **Mục tiêu**: Cho phép người dùng cá nhân hóa danh mục chi tiêu.
     *   **Mô tả**: Tạo bản ghi danh mục mới liên kết với `user_id = req.user.id`.

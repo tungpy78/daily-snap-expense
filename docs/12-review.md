@@ -1373,5 +1373,114 @@ Nghiệm thu thành công 100% trên máy thật:
 - test: 7 suites passed, 86 tests passed
 - build: pass
 
+---
+
+## Review: T-5.3 - API Lấy danh sách danh mục chi tiêu
+
+### Date
+2026-06-15
+
+### Tóm tắt triển khai
+* Đã thêm endpoint:
+```txt
+GET /api/v1/categories
+```
+* Endpoint protected bằng `authMiddleware`.
+* API trả về danh sách category khả dụng của user hiện tại.
+* Danh sách bao gồm:
+  * category hệ thống có `user_id = NULL`
+  * category custom của chính user hiện tại
+* Không trả category custom của user khác.
+* Không tạo API POST/PUT/DELETE category trong task này.
+
+### Kiến trúc
+Ghi nhận tuân thủ luồng:
+```txt
+Route -> authMiddleware -> Controller -> Service -> Repository -> Model/Database
+```
+Trong đó:
+* Route chỉ gắn `authMiddleware`.
+* Controller gọi Service, không chứa business logic.
+* Service gọi Repository, không query Sequelize Model trực tiếp.
+* Repository là tầng duy nhất import/query `Category` Sequelize Model.
+
+### Files tạo mới/sửa đổi
+Ghi nhận đã tạo:
+* `src/shared/models/category.model.ts`
+* `src/modules/categories/dtos/category.dto.ts`
+* `src/modules/categories/repositories/category.repository.ts`
+* `src/modules/categories/services/category.service.ts`
+* `src/modules/categories/controllers/category.controller.ts`
+* `src/modules/categories/routes/category.routes.ts`
+* `src/modules/categories/routes/category.routes.spec.ts`
+
+Ghi nhận đã sửa:
+* `src/app.ts`
+
+### Category model
+Ghi nhận model map đúng bảng `categories`:
+* `id`
+* `user_id`
+* `name`
+* `color`
+* `icon`
+* `created_at`
+* `updated_at`
+
+Không thêm `deleted_at`.
+
+### Repository query
+Ghi nhận repository query theo điều kiện:
+```txt
+user_id IS NULL OR user_id = currentUserId
+```
+Không trả category custom của user khác.
+Có order ổn định để tránh flaky test.
+
+### Response DTO
+Ghi nhận response format:
+```ts
+{
+  id: string;
+  name: string;
+  color: string | null;
+  icon: string | null;
+  isDefault: boolean;
+}
+```
+`isDefault = true` when `user_id === null`.
+
+Không trả:
+* `user_id`
+* `created_at`
+* `updated_at`
+* `deleted_at`
+
+### Test cases
+Ghi nhận integration tests đã bao phủ:
+1. Không có Authorization header -> 401 `UNAUTHORIZED`.
+2. Token không hợp lệ -> 401 `INVALID_TOKEN`.
+3. Token hợp lệ -> 200.
+4. Response có category hệ thống với `isDefault: true`.
+5. Response có category custom của user hiện tại với `isDefault: false`.
+6. Response không chứa category custom của user khác.
+7. Response không leak `user_id`, `created_at`, `updated_at`.
+8. User không có custom category vẫn nhận được category hệ thống.
+9. User2 chỉ thấy custom category của user2 và không thấy custom category của user1.
+
+### Technical note
+Ghi nhận lỗi đã sửa trong quá trình nghiệm thu:
+* `token2` trong `category.routes.spec.ts` bị khai báo nhưng chưa dùng.
+* Đã bổ sung test riêng cho user2 để dùng `token2` có ý nghĩa và tăng coverage kiểm thử phân quyền dữ liệu.
+
+### Kết quả nghiệm thu
+```txt
+format: pass
+format:check: pass
+lint: pass
+test: 8 suites passed, 91 tests passed
+build: pass
+```
+
 
 

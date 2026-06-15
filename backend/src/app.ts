@@ -8,6 +8,7 @@ import { AppError } from './shared/utils/appError';
 import { validateRequest } from './middlewares/validation.middleware';
 import authRoutes from './modules/auth/routes/auth.routes';
 import userRoutes from './modules/users/routes/user.routes';
+import categoryRoutes from './modules/categories/routes/category.routes';
 import { authMiddleware } from './middlewares/auth.middleware';
 
 // Load environment variables
@@ -113,6 +114,9 @@ app.use('/api/v1/auth', authRoutes);
 
 // User Routes
 app.use('/api/v1/users', userRoutes);
+
+// Category Routes
+app.use('/api/v1/categories', categoryRoutes);
 
 // Handle 404 Not Found routes
 app.use(notFoundHandler);
