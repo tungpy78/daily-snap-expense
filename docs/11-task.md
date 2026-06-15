@@ -188,7 +188,7 @@
     *   **Module ảnh hưởng**: DB Module (Migrations)
     *   **Test**: Chạy migration thành công.
     *   **Dependency**: T-5.1, T-2.2
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-6.2**: API Thêm chi tiêu thủ công (`POST /api/v1/expenses`)
     *   **Mục tiêu**: Ghi chép giao dịch chi tiêu không cần ảnh.
     *   **Mô tả**: Tạo bản ghi chi tiêu mới với số tiền, danh mục, ghi chú, ngày, `snapId = NULL`.

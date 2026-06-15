@@ -1627,5 +1627,129 @@ test: 8 suites passed, 103 tests passed
 build: pass
 ```
 
+---
+
+## Review: T-6.1 - Tạo migration cho bảng expenses (Có soft delete)
+
+### Date
+2026-06-15
+
+### Tóm tắt triển khai
+* Đã tạo migration:
+```txt
+20260615191500-create-expenses.js
+```
+* Migration tạo bảng:
+```txt
+expenses
+```
+* Task này chỉ tạo database schema.
+* Không tạo Expense model.
+* Không tạo repository/service/controller/route/validator.
+* Không tạo API expense.
+* Không sửa auth/users/categories/profile/storage.
+* Không sửa `.env`.
+
+### Schema bảng expenses
+Ghi nhận các cột:
+```txt
+id          UUID PRIMARY KEY NOT NULL
+user_id     UUID NOT NULL
+snap_id     UUID NULL
+category_id UUID NOT NULL
+amount      DECIMAL(12, 2) NOT NULL
+note        TEXT NULL
+date        DATEONLY NOT NULL DEFAULT (CURRENT_DATE)
+created_at  DATE NOT NULL DEFAULT CURRENT_TIMESTAMP
+updated_at  DATE NOT NULL DEFAULT CURRENT_TIMESTAMP
+deleted_at  DATE NULL
+```
+
+### Soft delete
+Ghi nhận bảng có cột:
+```txt
+deleted_at DATE NULL
+```
+Cột này phục vụ soft delete cho các task expense sau.
+
+### Foreign keys
+
+#### user_id
+Ghi nhận:
+```txt
+user_id -> users(id)
+onUpdate: CASCADE
+onDelete: CASCADE
+```
+Ý nghĩa: khi user bị xóa, expense của user đó bị xóa theo.
+
+#### category_id
+Ghi nhận:
+```txt
+category_id -> categories(id)
+onUpdate: CASCADE
+onDelete: RESTRICT
+```
+Ý nghĩa: không cho xóa category nếu vẫn còn expense tham chiếu tới category đó.
+
+#### snap_id
+Ghi nhận:
+```txt
+snap_id UUID NULL
+```
+Chưa thêm foreign key cho `snap_id` vì bảng `snaps` chưa được tạo ở milestone hiện tại. FK cho `snap_id` sẽ được xử lý sau khi bảng `snaps` tồn tại.
+
+### Indexes
+Ghi nhận đã tạo:
+```txt
+expenses_user_id_date_index trên user_id, date
+expenses_snap_id_index trên snap_id
+```
+Mục đích:
+* `expenses_user_id_date_index`: tối ưu truy vấn lịch sử và thống kê chi tiêu theo user/ngày.
+* `expenses_snap_id_index`: hỗ trợ truy vấn expense gắn với snap sau này.
+
+### Down migration
+Ghi nhận rollback dùng:
+```js
+await queryInterface.dropTable('expenses');
+```
+Rollback đã được nghiệm thu bằng:
+```bash
+npx sequelize-cli db:migrate:undo
+```
+Sau đó migrate lại thành công bằng:
+```bash
+npx sequelize-cli db:migrate
+```
+
+### Technical note
+Ghi nhận lỗi đã phát hiện và sửa trong quá trình nghiệm thu:
+* Ban đầu migration dùng:
+```sql
+DEFAULT CURRENT_DATE
+```
+* MySQL báo syntax error.
+* Đã sửa thành:
+```sql
+DEFAULT (CURRENT_DATE)
+```
+* Sau khi sửa, migration chạy thành công.
+
+### Kết quả nghiệm thu
+Ghi nhận:
+```txt
+Migration status before: expenses down
+Migration up: pass
+Migration status after: expenses up
+Migration undo: pass
+Migration re-run: pass
+format: pass
+format:check: pass
+lint: pass
+test: 8 suites passed, 103 tests passed
+build: pass
+```
+
 
 
