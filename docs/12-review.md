@@ -1482,5 +1482,150 @@ test: 8 suites passed, 91 tests passed
 build: pass
 ```
 
+---
+
+## Review: T-5.4 - API Tạo danh mục tùy chỉnh
+
+### Date
+2026-06-15
+
+### Tóm tắt triển khai
+* Đã thêm endpoint:
+```txt
+POST /api/v1/categories
+```
+* Endpoint protected bằng `authMiddleware`.
+* Có validation bằng `validateRequest(createCategorySchema)`.
+* API cho phép user tạo category custom của riêng mình.
+* Không tạo migration mới.
+* Không sửa migration T-5.1.
+* Không sửa seeder T-5.2.
+* Không tạo API update/delete category trong task này.
+
+### Kiến trúc
+Ghi nhận tuân thủ luồng:
+```txt
+Route -> authMiddleware -> validateRequest -> Controller -> Service -> Repository -> Model/Database
+```
+Trong đó:
+* Route gắn `authMiddleware` và `validateRequest`.
+* Controller gọi Service, không chứa business logic.
+* Service gọi Repository, không query Sequelize Model trực tiếp.
+* Repository là tầng duy nhất import/query `Category` Sequelize Model.
+
+### Files tạo mới/sửa đổi
+Ghi nhận tạo mới:
+* `src/modules/categories/validators/category.validator.ts`
+
+Ghi nhận sửa:
+* `src/modules/categories/dtos/category.dto.ts`
+* `src/modules/categories/repositories/category.repository.ts`
+* `src/modules/categories/services/category.service.ts`
+* `src/modules/categories/controllers/category.controller.ts`
+* `src/modules/categories/routes/category.routes.ts`
+* `src/modules/categories/routes/category.routes.spec.ts`
+* `src/shared/models/category.model.ts`
+
+### Validator
+Ghi nhận `createCategorySchema`:
+* `name`: required, trim, 1-50 ký tự, hỗ trợ tiếng Việt có dấu.
+* `color`: optional/nullable, nếu có phải đúng hex `#RRGGBB`.
+* `icon`: optional/nullable, tối đa 50 ký tự.
+* Chuỗi rỗng của `color` và `icon` được normalize thành `null`.
+
+### Duplicate rule
+Ghi nhận rule chống trùng:
+```txt
+user_id IS NULL OR user_id = currentUserId
+```
+Ý nghĩa:
+* User không được tạo category trùng tên với category hệ thống.
+* User không được tạo category trùng tên với custom category của chính họ.
+* User khác nhau được phép có custom category trùng tên.
+* Check trùng có trim và case-insensitive.
+
+Khi trùng, trả:
+```txt
+400 CATEGORY_ALREADY_EXISTS
+```
+
+### Response DTO
+Ghi nhận response trả safe DTO:
+```ts
+{
+  id: string;
+  name: string;
+  color: string | null;
+  icon: string | null;
+  isDefault: false;
+}
+```
+Không trả:
+* `user_id`
+* `created_at`
+* `updated_at`
+* `deleted_at`
+
+### Type/DTO refactor
+Ghi nhận đã refactor DTO/interface dùng chung về:
+```txt
+src/modules/categories/dtos/category.dto.ts
+```
+Bao gồm:
+* `CategoryDto`
+* `CreateCategoryDto`
+* `CreateCategoryData`
+
+Service/repository dùng `import type`.
+
+### Sequelize model typing
+Ghi nhận đã sửa lỗi TypeScript bằng cách khai báo rõ:
+```ts
+CategoryAttributes
+CategoryCreationAttributes
+Category extends Model<CategoryAttributes, CategoryCreationAttributes>
+```
+Và repository `create` truyền object tường minh:
+```ts
+Category.create({
+  user_id,
+  name,
+  color,
+  icon,
+})
+```
+
+### Test cases
+Ghi nhận integration tests đã bao phủ:
+1. Không gửi Authorization header -> 401 `UNAUTHORIZED`.
+2. Token không hợp lệ -> 401 `INVALID_TOKEN`.
+3. Tạo category custom thành công -> 201 Created.
+4. Response trả safe DTO và `isDefault: false`.
+5. DB ghi đúng `user_id = currentUserId`.
+6. Không leak `user_id`, `created_at`, `updated_at`.
+7. `name` rỗng hoặc chỉ khoảng trắng -> 400 `VALIDATION_ERROR`.
+8. `name` quá 50 ký tự -> 400 `VALIDATION_ERROR`.
+9. `color` sai hex -> 400 `VALIDATION_ERROR`.
+10. Trùng tên category hệ thống -> 400 `CATEGORY_ALREADY_EXISTS`.
+11. Trùng tên custom category của chính user -> 400 `CATEGORY_ALREADY_EXISTS`.
+12. Duplicate case-insensitive -> 400 `CATEGORY_ALREADY_EXISTS`.
+13. Cho phép tạo trùng tên custom category của user khác -> 201 Created.
+14. Chuỗi rỗng của `color` và `icon` được normalize thành `null`.
+15. Cleanup sạch dữ liệu test sau suite.
+
+### Technical note
+Ghi nhận lỗi đã sửa trong quá trình nghiệm thu:
+* Lỗi TypeScript ở `Category.create(data)` do Category model chưa khai báo generic Attributes/CreationAttributes rõ ràng.
+* Đã sửa bằng cách typing lại `Category` model và sửa repository create method.
+
+### Kết quả nghiệm thu
+```txt
+format: pass
+format:check: pass
+lint: pass
+test: 8 suites passed, 103 tests passed
+build: pass
+```
+
 
 

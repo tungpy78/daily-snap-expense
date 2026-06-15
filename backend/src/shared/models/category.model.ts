@@ -1,14 +1,32 @@
-import { Model, DataTypes } from 'sequelize';
+import { DataTypes, Model, type Optional } from 'sequelize';
 import sequelize from '../database/index';
 
-export class Category extends Model {
+export interface CategoryAttributes {
+  id: string;
+  user_id: string | null;
+  name: string;
+  color: string | null;
+  icon: string | null;
+  created_at?: Date;
+  updated_at?: Date;
+}
+
+export type CategoryCreationAttributes = Optional<
+  CategoryAttributes,
+  'id' | 'created_at' | 'updated_at'
+>;
+
+export class Category
+  extends Model<CategoryAttributes, CategoryCreationAttributes>
+  implements CategoryAttributes
+{
   declare id: string;
   declare user_id: string | null;
   declare name: string;
   declare color: string | null;
   declare icon: string | null;
-  declare readonly created_at: Date;
-  declare readonly updated_at: Date;
+  declare readonly created_at?: Date;
+  declare readonly updated_at?: Date;
 }
 
 Category.init(

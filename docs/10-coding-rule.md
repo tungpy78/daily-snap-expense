@@ -55,7 +55,7 @@ Tuân thủ mô hình phân tầng **Layered Architecture**:
 * Sử dụng **Sequelize Transactions** khi có nhiều tác vụ ghi database liên tiếp để đảm bảo tính toàn vẹn dữ liệu.
 * Không tương tác trực tiếp với đối tượng Request/Response của Express.
 * **Tuyệt đối không** import trực tiếp Sequelize Model hoặc thực hiện các câu query database (phải đi qua Repository).
-* Các interface/type đại diện cho DTO (như `RegisterDto`, `LoginDto`, v.v.) nên được tách riêng ra thư mục `dtos/` để dễ tái sử dụng và giữ file Service sạch sẽ.
+* Các interface/type đại diện cho DTO (như `RegisterDto`, `LoginDto`, v.v.) nên được tách riêng ra thư mục `dtos/` để dễ tái sử dụng và giữ file Service sạch sẽ. Không khai báo DTO/interface dùng chung trực tiếp trong service/controller. DTO/request/response type của module phải đặt trong thư mục `dtos` của module (Ví dụ: `src/modules/categories/dtos/category.dto.ts`). Service/controller/repository import type từ DTO file bằng `import type`.
 
 ### Lớp Repository
 * Xử lý truy vấn cơ sở dữ liệu. Là tầng **duy nhất** được phép import Sequelize Model và gọi các hàm của model (`findOne`, `create`, `update`, `destroy`, v.v.).
@@ -91,6 +91,7 @@ Tuân thủ mô hình phân tầng **Layered Architecture**:
   - Mặc định Sequelize model phải được cấu hình `paranoid: true` cho các bảng cần soft delete (`expenses`, `snaps`).
   - Mọi câu lệnh truy vấn (Query) dòng thời gian (Timeline) cá nhân, bảng tin bạn bè (Friend Feed) hoặc danh sách chi tiêu bắt buộc phải loại bỏ các bản ghi đã bị xóa mềm (`deleted_at IS NOT NULL`). Đối với Sequelize, điều này được xử lý tự động nhờ cơ chế paranoid, nhưng nếu viết raw query hoặc JOIN thủ công cần bắt buộc thêm điều kiện loại trừ.
 * **Audit Fields**: Mọi bảng dữ liệu phải có `created_at` và `updated_at`.
+* **Sequelize model typing**: Sequelize model phải khai báo rõ Attributes và CreationAttributes khi có thao tác create/update để tránh lỗi TypeScript infer sai kiểu. Ví dụ: `Model<CategoryAttributes, CategoryCreationAttributes>`.
 
 ---
 

@@ -177,7 +177,7 @@
     *   **Module ảnh hưởng**: Category Module
     *   **Test**: Integration test tạo danh mục mới, kiểm tra trường `user_id` không bị NULL.
     *   **Dependency**: T-5.3
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 
 ---
 

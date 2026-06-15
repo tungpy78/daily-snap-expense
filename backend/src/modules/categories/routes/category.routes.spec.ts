@@ -5,6 +5,7 @@ import { User } from '../../../shared/models/user.model';
 import { Category } from '../../../shared/models/category.model';
 import sequelize from '../../../shared/database/index';
 import { tokenService } from '../../auth/services/token.service';
+import type { CategoryDto } from '../dtos/category.dto';
 
 describe('Category Integration Tests', () => {
   const testUsernames = ['test_cat_user_1', 'test_cat_user_2', 'test_cat_user_no_custom'];
@@ -13,6 +14,9 @@ describe('Category Integration Tests', () => {
     'TestSystemCategoryB',
     'TestUser1CustomCategory',
     'TestUser2CustomCategory',
+    'Chăm sóc da',
+    'Test Normalization',
+    'Invalid Color Cat',
   ];
 
   const testAccessSecret = 'test_integration_access_secret';
@@ -119,12 +123,7 @@ describe('Category Integration Tests', () => {
     }
   });
 
-  interface ExpectedCategory {
-    id: string;
-    name: string;
-    color: string | null;
-    icon: string | null;
-    isDefault: boolean;
+  interface ExpectedCategory extends CategoryDto {
     user_id?: string;
     userId?: string;
     created_at?: string;
@@ -270,6 +269,190 @@ describe('Category Integration Tests', () => {
         (c: ExpectedCategory) => c.name === 'TestUser2CustomCategory',
       );
       expect(user2Custom).toBeUndefined();
+    });
+  });
+
+  describe('POST /api/v1/categories', () => {
+    it('should return HTTP 401 when Authorization header is missing', async () => {
+      const response = await request(app).post('/api/v1/categories').send({
+        name: 'Chăm sóc da',
+      });
+
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'UNAUTHORIZED');
+    });
+
+    it('should return HTTP 401 when token is invalid', async () => {
+      const response = await request(app)
+        .post('/api/v1/categories')
+        .set('Authorization', 'Bearer invalid.token.value')
+        .send({
+          name: 'Chăm sóc da',
+        });
+
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'INVALID_TOKEN');
+    });
+
+    it('should create custom category successfully and return 201', async () => {
+      const response = await request(app)
+        .post('/api/v1/categories')
+        .set('Authorization', `Bearer ${token1}`)
+        .send({
+          name: '  Chăm sóc da  ',
+          color: '#E91E63',
+          icon: 'sparkles',
+        });
+
+      expect(response.status).toBe(201);
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body.data).toHaveProperty('category');
+
+      const category = response.body.data.category;
+      expect(category).toHaveProperty('id');
+      expect(category.name).toBe('Chăm sóc da'); // Trimmed name
+      expect(category.color).toBe('#E91E63');
+      expect(category.icon).toBe('sparkles');
+      expect(category.isDefault).toBe(false);
+
+      // Verify no sensitive/internal database columns are leaked
+      expect(category).not.toHaveProperty('user_id');
+      expect(category).not.toHaveProperty('userId');
+      expect(category).not.toHaveProperty('created_at');
+      expect(category).not.toHaveProperty('createdAt');
+      expect(category).not.toHaveProperty('updated_at');
+      expect(category).not.toHaveProperty('updatedAt');
+      expect(category).not.toHaveProperty('deleted_at');
+      expect(category).not.toHaveProperty('deletedAt');
+
+      // Verify DB record
+      const dbCategory = await Category.findByPk(category.id);
+      expect(dbCategory).toBeDefined();
+      expect(dbCategory!.user_id).toBe(user1.id);
+    });
+
+    it('should return HTTP 400 when name is empty or only whitespaces', async () => {
+      const response = await request(app)
+        .post('/api/v1/categories')
+        .set('Authorization', `Bearer ${token1}`)
+        .send({
+          name: '   ',
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+
+    it('should return HTTP 400 when name is longer than 50 characters', async () => {
+      const response = await request(app)
+        .post('/api/v1/categories')
+        .set('Authorization', `Bearer ${token1}`)
+        .send({
+          name: 'a'.repeat(51),
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+
+    it('should return HTTP 400 when color format is invalid', async () => {
+      const response = await request(app)
+        .post('/api/v1/categories')
+        .set('Authorization', `Bearer ${token1}`)
+        .send({
+          name: 'Invalid Color Cat',
+          color: 'E91E63', // Missing #
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+
+    it('should return HTTP 400 when color has invalid characters', async () => {
+      const response = await request(app)
+        .post('/api/v1/categories')
+        .set('Authorization', `Bearer ${token1}`)
+        .send({
+          name: 'Invalid Color Cat',
+          color: '#GGGGGG',
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+
+    it('should return HTTP 400 when creating category with duplicate name as system category', async () => {
+      const response = await request(app)
+        .post('/api/v1/categories')
+        .set('Authorization', `Bearer ${token1}`)
+        .send({
+          name: 'TestSystemCategoryA',
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'CATEGORY_ALREADY_EXISTS');
+    });
+
+    it('should return HTTP 400 when creating category with duplicate name as own custom category', async () => {
+      const response = await request(app)
+        .post('/api/v1/categories')
+        .set('Authorization', `Bearer ${token1}`)
+        .send({
+          name: 'TestUser1CustomCategory',
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'CATEGORY_ALREADY_EXISTS');
+    });
+
+    it('should return HTTP 400 when duplicate check is case-insensitive', async () => {
+      const response = await request(app)
+        .post('/api/v1/categories')
+        .set('Authorization', `Bearer ${token1}`)
+        .send({
+          name: 'testuser1customcategory',
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'CATEGORY_ALREADY_EXISTS');
+    });
+
+    it("should allow duplicate category name with another user's custom category", async () => {
+      const response = await request(app)
+        .post('/api/v1/categories')
+        .set('Authorization', `Bearer ${token1}`)
+        .send({
+          name: 'TestUser2CustomCategory',
+        });
+
+      expect(response.status).toBe(201);
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body.data.category.name).toBe('TestUser2CustomCategory');
+      expect(response.body.data.category.isDefault).toBe(false);
+    });
+
+    it('should normalize color and icon empty strings to null', async () => {
+      const response = await request(app)
+        .post('/api/v1/categories')
+        .set('Authorization', `Bearer ${token1}`)
+        .send({
+          name: 'Test Normalization',
+          color: '   ',
+          icon: '',
+        });
+
+      expect(response.status).toBe(201);
+      expect(response.body.data.category.color).toBeNull();
+      expect(response.body.data.category.icon).toBeNull();
     });
   });
 });

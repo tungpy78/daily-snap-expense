@@ -30,4 +30,32 @@ export class CategoryController {
       next(error);
     }
   }
+
+  /**
+   * Controller action for POST /api/v1/categories.
+   * Creates a new custom category for the logged-in user.
+   */
+  public static async createCategory(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    try {
+      if (!req.user || !req.user.id) {
+        throw new AppError('Bạn chưa xác thực. Vui lòng đăng nhập.', 401, 'UNAUTHORIZED');
+      }
+
+      const userId = req.user.id;
+      const category = await CategoryService.createCustomCategory(userId, req.body);
+
+      res.status(201).json({
+        success: true,
+        data: {
+          category,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
