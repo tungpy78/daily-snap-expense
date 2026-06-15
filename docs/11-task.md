@@ -138,7 +138,7 @@
     *   **Module ảnh hưởng**: Storage Module
     *   **Test**: Unit test tải lên một file ảnh giả lập và kiểm tra file tồn tại trong thư mục đích.
     *   **Dependency**: T-2.3
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-4.3**: API Cập nhật Profile (`PUT /api/v1/users/profile`)
     *   **Mục tiêu**: Cho phép đổi tên hiển thị và upload ảnh avatar.
     *   **Mô tả**: API nhận dữ liệu multipart/form-data, upload avatar qua `StorageService`, cập nhật thông tin user.

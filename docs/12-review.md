@@ -1083,3 +1083,93 @@ Nghiệm thu toàn bộ trên máy thật thành công 100%:
 - `npm run test`: pass. (5 test suites, 55 tests pass).
 - `npm run build`: pass.
 - Hoàn toàn sạch lỗi timeout và rò rỉ tài nguyên (worker leak/open handles).
+
+---
+
+## Review: T-4.2 - Tích hợp Multer và thiết lập lớp trừu tượng StorageService
+
+### Date
+2026-06-15
+
+### Summary
+Tích hợp thành công thư viện Multer để xử lý dữ liệu ảnh multipart/form-data bằng memory storage, thiết lập lớp lưu trữ trừu tượng `StorageService` cùng nhà cung cấp lưu trữ cục bộ `LocalStorageProvider` an toàn, chống Path Traversal, phục vụ cho các nghiệp vụ tải ảnh tiếp theo.
+
+### Packages
+Đã cài đặt các packages mới:
+- `multer` (dependencies)
+- `@types/multer` (devDependencies)
+Ghi nhận các cảnh báo (Warnings) trong quá trình cài đặt:
+- Cảnh báo unsupported engine `npm EBADENGINE` được ghi nhận nhưng không xử lý để tránh thay đổi Node version của máy chủ/dev.
+- Cảnh báo `npm audit` được ghi nhận nhưng cam kết không chạy `npm audit fix --force` để bảo toàn tính ổn định của các packages khác.
+- Cảnh báo deprecation/vulnerability của Multer 1.x được ghi nhận nhưng không tự ý nâng lên Multer 2 để tránh phá vỡ kiến trúc và gây breaking changes ngoài phạm vi task.
+
+### Files Changed
+- `backend/src/shared/storage/storage.service.ts` (Tạo mới interface StorageService)
+- `backend/src/shared/storage/local-storage.provider.ts` (Tạo mới LocalStorageProvider)
+- `backend/src/shared/storage/local-storage.provider.spec.ts` (Tạo mới unit tests cho Provider)
+- `backend/src/middlewares/upload.middleware.ts` (Tạo mới upload middleware factory)
+- `backend/src/middlewares/upload.middleware.spec.ts` (Tạo mới unit tests cho Middleware)
+- `backend/package.json` (Chỉnh sửa để thêm các dependencies)
+- `backend/package-lock.json` (Cập nhật tự động sau khi chạy npm install)
+*Đã kiểm tra file `src/app.ts` và xác nhận cơ chế static serve `/public` đã được thiết lập chính xác từ trước, hoàn toàn không cần chỉnh sửa logic.*
+
+### StorageService
+Interface định nghĩa lớp trừu tượng dùng chung:
+```typescript
+export interface StorageService {
+  uploadImage(file: Express.Multer.File, folderPath: string): Promise<string>;
+  deleteImage(imageUrl: string): Promise<void>;
+}
+```
+
+### LocalStorageProvider
+- **uploadImage**: Nhận file từ `file.buffer`. Sử dụng UUID làm tên file ngẫu nhiên để tránh trùng tên. Chỉ chấp nhận các định dạng `.jpg`, `.jpeg`, `.png`. Ghi tệp tin vào thư mục `public/uploads/<folderPath>`. Trả về URL tuyệt đối dạng `${BACKEND_URL}/public/uploads/...` (tự động xử lý tránh double slash và fallback về `http://localhost:5001`).
+- **deleteImage**: Phân tích URL để xóa file vật lý tương ứng nếu tồn tại, xử lý an toàn không crash nếu file không tồn tại.
+
+### Security notes
+Các cơ chế bảo mật nghiêm ngặt chống tấn công Path Traversal:
+- Chặn `folderPath` chứa kí tự quay lui thư mục (`..`).
+- Chặn absolute path và ký tự Windows backslash (`\`).
+- Chỉ cho phép các ký tự an toàn thông qua regex: `/^[a-zA-Z0-9_/-]+$/`.
+- Sử dụng `path.resolve` và bắt buộc đường dẫn đích phải nằm trong upload root directory (sử dụng `.startsWith(uploadRoot)`).
+- Chặn path traversal khi xóa ảnh: URL gửi xóa không thuộc upload root `/public/uploads` sẽ bị bỏ qua an toàn và không thực thi hành vi xóa ngoài phạm vi.
+
+### Upload middleware
+- Sử dụng `multer.memoryStorage()`.
+- Giới hạn kích thước file tối đa 5MB.
+- Xác thực định dạng dựa trên cả extension của `originalname` (`.jpg`, `.jpeg`, `.png`) và `mimetype` (`image/jpeg`, `image/png`).
+- Trả về lỗi `INVALID_FILE_TYPE` (HTTP 400) nếu sai định dạng.
+- Trả về lỗi `FILE_TOO_LARGE` (HTTP 400) nếu file quá lớn.
+- Cho phép đi tiếp nếu không gửi kèm file (để controller nghiệp vụ tự xử lý).
+
+### Test cases
+Đã bổ sung các test cases unit test chất lượng:
+- **LocalStorageProvider**:
+  - Tải ảnh thành công, lưu file thật trên đĩa, trả URL tuyệt đối chuẩn.
+  - Từ chối định dạng không hợp lệ.
+  - Chặn các đường dẫn folderPath nguy hiểm chứa `..`, absolute path, backslash, hoặc ký tự lạ.
+  - Xóa ảnh thành công, file không còn trên đĩa.
+  - Xóa ảnh không tồn tại chạy an toàn không crash.
+  - Chặn URL độc hại/path traversal khi delete.
+  - Hook dọn dẹp sạch sẽ toàn bộ thư mục/file rác phát sinh trong quá trình chạy test.
+- **Upload middleware**:
+  - Upload `.png`, `.jpg` (với mimetype `image/jpeg`), `.jpeg` hợp lệ pass qua middleware.
+  - Upload `.txt` trả 400 `INVALID_FILE_TYPE`.
+  - Upload mimetype sai trả 400 `INVALID_FILE_TYPE`.
+  - Upload file vượt quá 5MB trả 400 `FILE_TOO_LARGE`.
+  - Không gửi file vẫn pass qua middleware bình thường (optional file).
+
+### Technical notes
+Các lỗi được phát hiện và xử lý kịp thời trong quá trình phát triển:
+1. Regex validate folderPath bị ESLint cảnh báo `no-useless-escape` với ký tự gạch chéo `/`. Đã chỉnh sửa thành `/^[a-zA-Z0-9_/-]+$/` để pass lint.
+2. Kiểu dữ liệu `NodeJS.ReadableStream` dùng trong mock file test gây lỗi compile typescript do thiếu thuộc tính của `Readable`. Đã xử lý bằng cách import `Readable` từ `stream` và mock bằng `Readable.from([])`.
+3. Sửa mimetype kỳ vọng trong test ảnh `.jpg` thành `image/jpeg` đúng với tiêu chuẩn thực tế của driver Multer thay vì `image/jpg`.
+
+### Kết quả nghiệm thu
+Nghiệm thu toàn bộ trên máy thật thành công 100:
+- `npm run format`: pass.
+- `npm run format:check`: pass.
+- `npm run lint`: pass.
+- `npm run test`: pass (7 test suites, 71 tests pass).
+- `npm run build`: pass.
+- Sạch lỗi treo Jest, worker leak, hay open handles.
