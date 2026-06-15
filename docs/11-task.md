@@ -163,7 +163,7 @@
     *   **Module ảnh hưởng**: DB Module (Seeds)
     *   **Test**: Kiểm tra bảng `categories` có dữ liệu mặc định sau khi chạy seed.
     *   **Dependency**: T-5.1
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-5.3**: API Lấy danh sách danh mục chi tiêu (`GET /api/v1/categories`)
     *   **Mục tiêu**: Hiển thị toàn bộ danh mục khả dụng của user.
     *   **Mô tả**: Truy vấn toàn bộ danh mục có `user_id = NULL` HOẶC `user_id = req.user.id`.

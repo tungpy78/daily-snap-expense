@@ -1321,4 +1321,57 @@ Nghiệm thu thành công 100% các câu lệnh kiểm tra trên máy thật:
 - test: 7 suites passed, 86 tests passed
 - build: pass
 
+---
+
+## Review: T-5.2 - Viết Seed dữ liệu danh mục mặc định của hệ thống
+
+### Date
+2026-06-15
+
+### Summary
+Triển khai file seeder của Sequelize để khởi tạo 7 danh mục chi tiêu mặc định hệ thống (Ăn uống, Di chuyển, Mua sắm, Giải trí, Học tập, Sức khỏe, Khác) trong cơ sở dữ liệu với `user_id = NULL`.
+
+### Files Changed
+- `backend/src/shared/database/seeders/20260615161000-default-categories.js`
+
+### Danh sách category mặc định
+7 danh mục mặc định hệ thống:
+- Ăn uống (color: `#FF5733`, icon: `fast-food-outline`)
+- Di chuyển (color: `#3399FF`, icon: `car-outline`)
+- Mua sắm (color: `#FF3399`, icon: `cart-outline`)
+- Giải trí (color: `#CC33FF`, icon: `game-controller-outline`)
+- Học tập (color: `#33FF99`, icon: `book-outline`)
+- Sức khỏe (color: `#FF3333`, icon: `heart-outline`)
+- Khác (color: `#999999`, icon: `ellipsis-horizontal-outline`)
+
+### UUID cố định
+- Ăn uống: `ca7e1c2d-8e50-4a8b-bb57-d3da90a88001`
+- Di chuyển: `ca7e1c2d-8e50-4a8b-bb57-d3da90a88002`
+- Mua sắm: `ca7e1c2d-8e50-4a8b-bb57-d3da90a88003`
+- Giải trí: `ca7e1c2d-8e50-4a8b-bb57-d3da90a88004`
+- Học tập: `ca7e1c2d-8e50-4a8b-bb57-d3da90a88005`
+- Sức khỏe: `ca7e1c2d-8e50-4a8b-bb57-d3da90a88006`
+- Khác: `ca7e1c2d-8e50-4a8b-bb57-d3da90a88007`
+
+### Idempotency
+- Trong hàm `up`: Xóa trước đúng 7 danh mục bằng danh sách UUID cố định, sau đó tiến hành insert lại dữ liệu mới. Tránh xóa hàng loạt theo `user_id = NULL` để không làm mất các danh mục hệ thống khác phát sinh trong tương lai.
+
+### Rollback
+- Trong hàm `down`: Chỉ thực hiện xóa đúng 7 danh mục bằng danh sách UUID cố định trên, không ảnh hưởng tới các danh mục tùy chỉnh của user và các danh mục hệ thống khác ngoài phạm vi.
+
+### Technical Note
+- Phát hiện và sửa đổi lệch pha về mặt ngôn ngữ: Ban đầu seeder dùng tên danh mục tiếng Anh (`Food`, `Transport`, ...). Sau khi rà soát nghiệp vụ (FR-4.1 và các User Stories khác), seeder đã được cập nhật chuẩn xác sang tiếng Việt (`Ăn uống`, `Di chuyển`, ...). Dữ liệu thực tế đã được xác minh thành công trong DB.
+
+### Kết quả nghiệm thu
+Nghiệm thu thành công 100% trên máy thật:
+- Seed undo: pass
+- Seed all: pass
+- DB data check: pass
+- format: pass
+- format:check: pass
+- lint: pass
+- test: 7 suites passed, 86 tests passed
+- build: pass
+
+
 
