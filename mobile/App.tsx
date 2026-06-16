@@ -5,14 +5,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from './src/theme/theme';
 import { OnboardingScreen } from './src/features/auth/screens/OnboardingScreen';
 import { LoginScreen } from './src/features/auth/screens/LoginScreen';
+import { RegisterScreen } from './src/features/auth/screens/RegisterScreen';
 import { GlassCard } from './src/components/GlassCard';
 import { GlassButton } from './src/components/GlassButton';
 
 // LƯU Ý: File App.tsx này hiện tại đóng vai trò là container quản lý trạng thái luồng màn hình tạm thời
-// (onboarding -> login -> timeline mockup) phục vụ việc nghiệm thu T-12.2.
+// (onboarding -> login -> register -> timeline mockup) phục vụ việc nghiệm thu T-12.3.
 // Luồng điều hướng chính thức sẽ sử dụng React Navigation ở các task sau.
 
-type AppScreen = 'onboarding' | 'login' | 'timeline';
+type AppScreen = 'onboarding' | 'login' | 'register' | 'timeline';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<AppScreen>('onboarding');
@@ -36,7 +37,7 @@ export default function App() {
           setCurrentScreen('timeline');
         }}
         onNavigateToRegister={() => {
-          alert('Đăng ký Mockup - sẽ triển khai chính thức ở task sau (T-12.3).');
+          setCurrentScreen('register');
         }}
         onNavigateToOnboarding={() => {
           setCurrentScreen('onboarding');
@@ -45,6 +46,21 @@ export default function App() {
     );
   }
 
+  if (currentScreen === 'register') {
+    return (
+      <RegisterScreen
+        onRegisterSuccess={() => {
+          setCurrentScreen('timeline');
+        }}
+        onNavigateToLogin={() => {
+          setCurrentScreen('login');
+        }}
+      />
+    );
+  }
+
+  // Timeline mockup — màn hình tạm thời chứng minh login/register thành công
+  // TimelineScreen thật sẽ được phát triển ở các task sau (T-14.3)
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" />
@@ -52,8 +68,12 @@ export default function App() {
         <GlassCard style={styles.card}>
           <Text style={styles.mockTitle}>Timeline Mockup</Text>
           <Text style={styles.mockBody}>
-            Đăng nhập thành công với tài khoản:{"\n"}
-            <Text style={styles.usernameHighlight}>{loggedInUser}</Text>
+            {loggedInUser
+              ? `Đăng nhập thành công với tài khoản:\n`
+              : 'Đăng ký thành công!\n'}
+            {loggedInUser ? (
+              <Text style={styles.usernameHighlight}>{loggedInUser}</Text>
+            ) : null}
           </Text>
           <Text style={styles.mockBody}>
             Dòng thời gian (Timeline Screen) sẽ được phát triển ở các task sau.

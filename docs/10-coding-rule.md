@@ -175,3 +175,26 @@ Tuân thủ mô hình phân tầng **Layered Architecture**:
 * **Không sửa business logic để chiều lòng test cũ**: Khi hành vi nghiệp vụ của API thay đổi hợp lệ, phải cập nhật lại expectation của các test case cũ cho khớp với behavior mới thay vì tìm cách sửa đổi business logic để test cũ chạy qua.
 * **Eager load và bảo mật dữ liệu soft-delete**: Khi cần eager load một association có thể đã bị soft-deleted, bắt buộc dùng option `paranoid: false` và map DTO rõ ràng, tuyệt đối không leak các trường nội bộ của database như `deleted_at`, `updated_at`, `image_url` hoặc `user_id`.
 
+---
+
+## 10. Quy tắc Mobile Form Validation (Mobile Form Validation Rules)
+
+### Tổ chức Schema và Type
+* **Form nhỏ, dùng trong một màn hình duy nhất**: Có thể khai báo `interface FormState`, `type FormErrors` và Zod schema ngay trong file screen. Không cần tách riêng nếu không dùng lại.
+* **Form phức tạp hoặc dùng lại**: Khi schema/type được dùng ở nhiều nơi hoặc bắt đầu tích hợp với API/Zustand store, bắt buộc tách ra thư mục feature-level:
+  - `mobile/src/features/auth/types/` — chứa TypeScript interfaces/types.
+  - `mobile/src/features/auth/validators/` — chứa Zod schemas.
+
+### Quy tắc Map lỗi Zod vào Form
+* **Không dùng `any` hoặc `as any`** khi map lỗi Zod. Phải đảm bảo field key thuộc form state bằng cách check `path in form` hoặc dùng `keyof FormState` rõ ràng.
+* **Chỉ lấy lỗi đầu tiên** cho mỗi field (`if (!fieldErrors[key])`) để tránh hiển thị nhiều lỗi cùng lúc gây rối UX.
+* **Validate `confirmPassword`** bằng `.refine()` ở cấp **object** (sau `.object({...})`), không trong từng field riêng lẻ. Gắn `path: ['confirmPassword']` để Zod map đúng field trong issues.
+
+### Quy tắc Bảo mật trong Form Auth
+* **Không log password/token**: Tuyệt đối không dùng `console.log(password)`, `console.log(token)` hoặc tương đương trong bất kỳ component form Auth nào.
+* **Không hardcode tài khoản thật** trong mã nguồn (kể cả tài khoản test/demo).
+
+### Quy tắc SafeAreaView
+* **Tuyệt đối không dùng `SafeAreaView` từ `react-native`** trong các màn hình mới. Bắt buộc import từ `react-native-safe-area-context` để tránh cảnh báo deprecated và đảm bảo hoạt động đúng trên cả iOS/Android.
+
+

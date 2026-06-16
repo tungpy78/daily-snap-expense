@@ -380,7 +380,7 @@
     *   **Module ảnh hưởng**: Mobile Auth Feature
     *   **Test**: Kiểm tra ràng buộc mật khẩu khớp nhau trực tiếp trên giao diện.
     *   **Dependency**: T-12.2
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-12.4**: Tích hợp Auth Zustand Store và quản lý lưu trữ Token bảo mật
     *   **Mục tiêu**: Lưu trạng thái đăng nhập lâu dài.
     *   **Mô tả**: Lưu `refreshToken` vào `expo-secure-store`. Quản lý state đăng nhập toàn cục.
