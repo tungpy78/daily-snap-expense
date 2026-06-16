@@ -4503,6 +4503,76 @@ Kết quả:
 - Chưa cấu hình React Navigation chính thức.
 - Chưa tích hợp API Auth.
 - Chưa lưu trạng thái đã xem onboarding để tự động bỏ qua ở các lần khởi động tiếp theo (sẽ thực hiện ở các task sau).
+
+---
+
+## Review: T-12.2 - Thiết kế màn hình Đăng nhập (Login Screen)
+
+### Date
+2026-06-16
+
+### Tóm tắt triển khai
+- Tạo file `mobile/src/features/auth/screens/LoginScreen.tsx` thiết kế màn hình Đăng nhập (Login Screen).
+- Sửa đổi `mobile/App.tsx` để quản lý local state luồng màn hình tạm thời: `onboarding` -> `login` -> `timeline`.
+- `LoginScreen` chỉ xử lý UI và validation ở phía client-side, chưa tích hợp API thật, chưa lưu token, chưa sử dụng Zustand và chưa cấu hình React Navigation.
+
+### LoginScreen UI
+- Thiết kế theo phong cách **Sleek Dark Mode** và **Glassmorphism** giả lập.
+- Tái sử dụng bảng màu và tokens trong `theme.ts`.
+- Tái sử dụng `GlassCard` làm container chứa form đăng nhập.
+- Tái sử dụng `GlassInput` cho các ô nhập: `usernameOrEmail` (Email hoặc tên đăng nhập) và `password` (Mật khẩu).
+- Tái sử dụng `GlassButton` cho nút "Đăng nhập".
+- Bổ sung nút/chữ liên kết phụ "Đăng ký ngay" nhưng chỉ hiển thị thông báo mock (alert), chưa chuyển hướng sang màn hình RegisterScreen thật.
+- Bổ sung nút quay lại Onboarding để cho phép người dùng quay lại giới thiệu.
+- Sử dụng `KeyboardAvoidingView` và `ScrollView` bao bọc bên ngoài form để hạn chế tình trạng bàn phím che khuất các trường nhập liệu trên thiết bị di động.
+
+### Form fields
+- `usernameOrEmail`: Email hoặc tên đăng nhập.
+- `password`: Mật khẩu đăng nhập.
+
+### Validation bằng Zod
+- `LoginScreen` tích hợp Zod trực tiếp trong component để kiểm tra dữ liệu đầu vào.
+- Dùng `safeParse` để thực hiện validate.
+- Logic Schema:
+  - `usernameOrEmail`: sau khi `.trim()`, bắt buộc không được để trống.
+  - `password`: bắt buộc, tối thiểu 6 ký tự.
+- Thông báo lỗi chi tiết bằng tiếng Việt:
+  - `usernameOrEmail`: *"Vui lòng nhập email hoặc tên đăng nhập."*
+  - `password`: *"Vui lòng nhập mật khẩu."* / *"Mật khẩu phải có ít nhất 6 ký tự."*
+
+### Error mapping
+- Kết quả lỗi kiểm chứng từ Zod issues (`validation.error.issues`) được bóc tách và map thành một object errors type-safe.
+- errors được truyền trực tiếp vào prop `error` của các ô nhập `GlassInput` tương ứng để hiển thị thông báo lỗi màu đỏ dưới từng ô nhập.
+- Lỗi của field tương ứng tự động clear khi người dùng thay đổi giá trị trong ô nhập đó (thông qua `onChangeText`).
+
+### App.tsx flow
+- `App.tsx` sử dụng local state `currentScreen` để mock luồng hoạt động:
+  - Mặc định khởi tạo hiển thị `onboarding` (OnboardingScreen).
+  - Khi Onboarding hoàn tất (callback `onFinish`) $\rightarrow$ chuyển hướng sang màn hình `login` (LoginScreen).
+  - Khi LoginScreen thành công (callback `onLoginSuccess`) $\rightarrow$ chuyển hướng sang màn hình `timeline` mockup.
+  - Màn hình `timeline` mockup hiển thị thông tin tài khoản đăng nhập và nút "Đăng xuất". Khi bấm "Đăng xuất" sẽ quay lại màn hình `login` (LoginScreen).
+  - *Lưu ý:* Màn hình `timeline` mockup chỉ là màn hình tạm thời phục vụ cho việc chứng minh validation thành công và kiểm tra luồng chuyển tiếp. Giao diện Timeline thật sẽ được thực hiện ở các task sau.
+
+### Lệnh nghiệm thu
+Ghi nhận đã chạy kiểm thử trên máy thật:
+```bash
+cd "D:\vibe Coding\mobile"
+npx tsc --noEmit
+npm run start -- --clear
+```
+Kết quả nghiệm thu:
+- `npx tsc --noEmit`: pass sạch lỗi.
+- `npm run start -- --clear`: Metro chạy thành công, QR Code hiển thị.
+- Expo Go mở app thành công trên thiết bị thật, các tương tác form, Zod validation và chuyển tiếp giữa Onboarding -> Login -> Timeline mockup hoạt động hoàn toàn chính xác.
+
+### Phạm vi chưa làm
+- Chưa gọi API đăng nhập thật.
+- Chưa lưu `accessToken` / `refreshToken` vào bộ nhớ.
+- Chưa sử dụng `SecureStore` trong LoginScreen.
+- Chưa tạo Auth store bằng Zustand.
+- Chưa cấu hình React Navigation chính thức.
+- Chưa tạo RegisterScreen thật.
+- Chưa tạo TimelineScreen thật.
 ```
 
 

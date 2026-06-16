@@ -373,7 +373,7 @@
     *   **Module ảnh hưởng**: Mobile Auth Feature
     *   **Test**: Gửi thông tin trống báo lỗi validate đỏ dưới ô nhập. Nhập đúng chuyển hướng sang trang chủ.
     *   **Dependency**: T-12.1, T-11.3
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-12.3**: Thiết kế màn hình Đăng ký (Register Screen)
     *   **Mục tiêu**: Cho phép tạo tài khoản mới trên app.
     *   **Mô tả**: Form nhập email, username, mật khẩu, xác nhận mật khẩu.

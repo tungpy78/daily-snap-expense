@@ -4,21 +4,42 @@ import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from './src/theme/theme';
 import { OnboardingScreen } from './src/features/auth/screens/OnboardingScreen';
+import { LoginScreen } from './src/features/auth/screens/LoginScreen';
 import { GlassCard } from './src/components/GlassCard';
 import { GlassButton } from './src/components/GlassButton';
 
-// LƯU Ý: File App.tsx này hiện tại đóng vai trò là container chính để mount OnboardingScreen
-// và mock chuyển đổi trạng thái khi nhấn "Bắt đầu" (onFinish).
-// Khi onFinish kích hoạt, màn hình sẽ hiển thị mock Login.
+// LƯU Ý: File App.tsx này hiện tại đóng vai trò là container quản lý trạng thái luồng màn hình tạm thời
+// (onboarding -> login -> timeline mockup) phục vụ việc nghiệm thu T-12.2.
+// Luồng điều hướng chính thức sẽ sử dụng React Navigation ở các task sau.
+
+type AppScreen = 'onboarding' | 'login' | 'timeline';
 
 export default function App() {
-  const [isOnboardingFinished, setIsOnboardingFinished] = useState<boolean>(false);
+  const [currentScreen, setCurrentScreen] = useState<AppScreen>('onboarding');
+  const [loggedInUser, setLoggedInUser] = useState<string>('');
 
-  if (!isOnboardingFinished) {
+  if (currentScreen === 'onboarding') {
     return (
       <OnboardingScreen
         onFinish={() => {
-          setIsOnboardingFinished(true);
+          setCurrentScreen('login');
+        }}
+      />
+    );
+  }
+
+  if (currentScreen === 'login') {
+    return (
+      <LoginScreen
+        onLoginSuccess={(username) => {
+          setLoggedInUser(username);
+          setCurrentScreen('timeline');
+        }}
+        onNavigateToRegister={() => {
+          alert('Đăng ký Mockup - sẽ triển khai chính thức ở task sau (T-12.3).');
+        }}
+        onNavigateToOnboarding={() => {
+          setCurrentScreen('onboarding');
         }}
       />
     );
@@ -29,15 +50,20 @@ export default function App() {
       <StatusBar style="light" />
       <View style={styles.container}>
         <GlassCard style={styles.card}>
-          <Text style={styles.mockTitle}>Đăng nhập Mockup</Text>
+          <Text style={styles.mockTitle}>Timeline Mockup</Text>
           <Text style={styles.mockBody}>
-            Màn hình Đăng nhập (Login Screen) sẽ được triển khai chính thức ở task sau (T-12.2).
+            Đăng nhập thành công với tài khoản:{"\n"}
+            <Text style={styles.usernameHighlight}>{loggedInUser}</Text>
+          </Text>
+          <Text style={styles.mockBody}>
+            Dòng thời gian (Timeline Screen) sẽ được phát triển ở các task sau.
           </Text>
           <GlassButton
-            title="Quay lại Onboarding"
-            variant="secondary"
+            title="Đăng xuất"
+            variant="danger"
             onPress={() => {
-              setIsOnboardingFinished(false);
+              setLoggedInUser('');
+              setCurrentScreen('login');
             }}
           />
         </GlassCard>
@@ -74,5 +100,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: theme.spacing.lg,
+  },
+  usernameHighlight: {
+    fontWeight: theme.typography.weights.bold,
+    color: theme.colors.primary,
   },
 });
