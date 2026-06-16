@@ -151,6 +151,7 @@ Tuân thủ mô hình phân tầng **Layered Architecture**:
 ### Viết mã kiểm thử sạch
 * **Không khai báo biến thừa**: Không khai báo các biến test không thực sự sử dụng (như `token2`, `user2`, `category2`) trong file spec.
 * **Không dùng thủ thuật né tránh linter**: Không sử dụng `void variable` hoặc comment `eslint-disable` chỉ để né tránh cảnh báo unused variable của linter.
+* **Sử dụng block `{}` đầy đủ cho if/else**: Mọi câu lệnh if/else trong code và test phải dùng block `{}` đầy đủ, kể cả khi chỉ có một dòng lệnh. Không dùng `if (condition) doSomething();`.
 
 ### Logic Nghiệp vụ & Xử lý lỗi (Validation & Rollback)
 * **Zod Preprocess & Default**: Khi thiết kế Zod preprocess kết hợp với giá trị mặc định (`.default()`), tuyệt đối không return `undefined` cho các giá trị không hợp lệ (invalid value) vì điều này sẽ khiến Zod tự động kích hoạt giá trị default và bỏ qua lỗi. Phải giữ nguyên giá trị không hợp lệ để Zod thực hiện báo lỗi validation chuẩn.

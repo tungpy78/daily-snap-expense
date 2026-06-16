@@ -305,7 +305,7 @@
     *   **Module ảnh hưởng**: Reaction Module
     *   **Test**: Thả emoji thành công. Thử thả emoji vào snap private của người không kết bạn nhận về lỗi 403 Forbidden.
     *   **Dependency**: T-9.1, T-8.4
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 
 ---
 

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { SnapController } from '../controllers/snap.controller';
+import { ReactionController } from '../../reactions/controllers/reaction.controller';
 import { authMiddleware } from '../../../middlewares/auth.middleware';
 import { uploadImageMiddleware } from '../../../middlewares/upload.middleware';
 import { validateRequest } from '../../../middlewares/validation.middleware';
@@ -8,6 +9,7 @@ import {
   timelineQuerySchema,
   deleteSnapSchema,
 } from '../validators/snap.validator';
+import { reactToSnapSchema } from '../../reactions/validators/reaction.validator';
 
 const router = Router();
 
@@ -27,5 +29,12 @@ router.get(
 );
 
 router.delete('/:id', authMiddleware, validateRequest(deleteSnapSchema), SnapController.deleteSnap);
+
+router.post(
+  '/:id/react',
+  authMiddleware,
+  validateRequest(reactToSnapSchema),
+  ReactionController.reactToSnap,
+);
 
 export default router;

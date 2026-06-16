@@ -3627,6 +3627,160 @@ test: 12 suites passed, 251 tests passed
 build: pass
 ```
 
+---
+
+## Review: T-9.2 - API Thả Reaction vào Snap (POST /api/v1/snaps/:id/react)
+
+### Date
+2026-06-16
+
+### Tóm tắt triển khai
+Đã triển khai endpoint:
+`POST /api/v1/snaps/:id/react`
+
+Route protected:
+`authMiddleware`
+
+Route flow:
+`Route -> authMiddleware -> validateRequest(reactToSnapSchema) -> ReactionController.reactToSnap -> ReactionService.reactToSnap -> ReactionRepository/SnapRepository/FriendshipRepository -> Model/Database`
+
+Các file tạo mới:
+- `backend/src/shared/models/reaction.model.ts`
+- `backend/src/modules/reactions/dtos/reaction.dto.ts`
+- `backend/src/modules/reactions/validators/reaction.validator.ts`
+- `backend/src/modules/reactions/repositories/reaction.repository.ts`
+- `backend/src/modules/reactions/services/reaction.service.ts`
+- `backend/src/modules/reactions/controllers/reaction.controller.ts`
+- `backend/src/modules/reactions/routes/reaction.routes.spec.ts`
+
+Các file đã chỉnh sửa:
+- `backend/src/modules/snaps/routes/snap.routes.ts`
+- `backend/src/modules/friendships/repositories/friendship.repository.ts`
+
+Không tạo migration mới.
+Không sửa migration cũ.
+Không sửa `.env`.
+Không sửa `app.ts`.
+
+### API behavior
+Endpoint:
+`POST /api/v1/snaps/:id/react`
+
+Params:
+`id: UUID của snap`
+
+Request body:
+```json
+{
+  "emoji": "👍"
+}
+```
+
+Success response:
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Đã thả cảm xúc thành công."
+  }
+}
+```
+
+Error cases:
+- `401 UNAUTHORIZED` nếu thiếu token
+- `401 INVALID_TOKEN` nếu token sai
+- `400 VALIDATION_ERROR` nếu params.id không phải UUID
+- `400 VALIDATION_ERROR` nếu emoji thiếu/rỗng/quá 32 ký tự
+- `404 SNAP_NOT_FOUND` nếu snap không tồn tại hoặc đã soft-delete
+- `403 FORBIDDEN` nếu snap thuộc người khác nhưng không phải bạn bè accepted
+- `403 FORBIDDEN` nếu snap thuộc người khác và is_private = true
+
+### Business logic
+Ghi nhận logic trong `ReactionService.reactToSnap`:
+1. Trim emoji.
+2. Tìm snap active theo id.
+3. Nếu không có snap -> `SNAP_NOT_FOUND`.
+4. Nếu snap thuộc current user -> cho phép reaction, kể cả snap public/private.
+5. Nếu snap thuộc user khác:
+   - Nếu snap private -> `FORBIDDEN`.
+   - Nếu không phải accepted friends -> `FORBIDDEN`.
+6. Trong transaction:
+   - Tìm reaction theo snap_id + user_id.
+   - Nếu đã tồn tại -> update emoji.
+   - Nếu chưa tồn tại -> create reaction.
+7. Trả message "Đã thả cảm xúc thành công."
+
+Ghi rõ:
+- Unique constraint `(snap_id, user_id)` từ T-9.1 được tôn trọng.
+- User reaction lại cùng snap thì update emoji, không tạo duplicate.
+- Snap soft-deleted được xem như không tồn tại.
+- Không cập nhật friends feed/timeline để trả reactions thật trong task này.
+
+### Model / Repository / Validator / Route
+- Reaction model mapping bảng `reactions`, `timestamps: true`, `underscored: true`, `paranoid: false`.
+- Reaction belongsTo Snap.
+- Reaction belongsTo User.
+- `ReactionRepository` hỗ trợ `findBySnapAndUser`, `createReaction`, `updateEmojiById`.
+- `FriendshipRepository` bổ sung `areAcceptedFriends` để kiểm tra quan hệ accepted hai chiều.
+- `reactToSnapSchema` validate `params.id` UUID và `body.emoji` required/trim/min 1/max 32.
+- Route `POST /:id/react` được gắn trong `snap.routes.ts`.
+- Không tạo root route `/reactions`.
+
+### Test cases
+Ghi nhận đã bổ sung integration tests cho `POST /api/v1/snaps/:id/react`, bao phủ:
+1. Không gửi token -> 401.
+2. Token invalid -> 401.
+3. params.id không phải UUID -> 400 VALIDATION_ERROR.
+4. body.emoji missing -> 400 VALIDATION_ERROR.
+5. body.emoji empty/only spaces -> 400 VALIDATION_ERROR.
+6. body.emoji > 32 ký tự -> 400 VALIDATION_ERROR.
+7. Snap id không tồn tại -> 404 SNAP_NOT_FOUND.
+8. Snap đã soft-delete -> 404 SNAP_NOT_FOUND.
+9. Người lạ reaction vào public snap của user khác -> 403 FORBIDDEN.
+10. Pending friendship reaction vào public snap của user khác -> 403 FORBIDDEN.
+11. Rejected friendship reaction vào public snap của user khác -> 403 FORBIDDEN.
+12. Accepted friend reaction vào private snap của user khác -> 403 FORBIDDEN.
+13. Owner reaction vào snap public của chính mình -> 200, tạo reaction.
+14. Owner reaction vào snap private của chính mình -> 200, tạo reaction.
+15. Accepted friend reaction vào public snap -> 200, tạo reaction.
+16. User reaction lại cùng snap -> update emoji, không tạo duplicate record.
+
+Tổng reaction route tests:
+`16 tests passed`
+
+Và tổng test toàn dự án hiện tại:
+`13 suites passed, 267 tests passed`
+
+### Test isolation
+Mã kiểm thử tuân thủ:
+- Dùng randomUUID/shortId cho username/email.
+- Tracking IDs riêng: reactions, snaps, friendships, users.
+- Cleanup theo thứ tự: reactions -> snaps -> friendships -> users.
+- Không cleanup toàn bảng.
+- Không dùng any/as any.
+- Không dùng eslint-disable.
+- Không khai báo token/user/snap/friendship/reaction nếu không dùng thật.
+- Không tái sử dụng cùng cặp sender_id/receiver_id cho nhiều test tạo friendship mới.
+
+### Lỗi đã gặp và cách khắc phục
+1. Lint fail do rule curly:
+   - `reaction.routes.spec.ts` có 4 câu if một dòng thiếu dấu ngoặc nhọn.
+   - Lỗi: `Expected { after 'if' condition`.
+   - Cách sửa: bọc toàn bộ if một dòng bằng block `{ }`.
+   - Không dùng `eslint-disable` và không bỏ test.
+
+### Kết quả nghiệm thu
+```txt
+reaction routes test riêng: 1 suite passed, 16 tests passed
+full jest runInBand: 13 suites passed, 267 tests passed
+format: pass
+format:check: pass
+lint: pass, không warning no-explicit-any hoặc unused variable
+npm run test: 13 suites passed, 267 tests passed
+build: pass
+```
+
+
 
 
 

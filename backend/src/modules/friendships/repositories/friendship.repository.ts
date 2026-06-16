@@ -140,4 +140,25 @@ export class FriendshipRepository {
 
     return Array.from(new Set(friendIds));
   }
+
+  /**
+   * Checks if two users are accepted friends.
+   */
+  public static async areAcceptedFriends(
+    userAId: string,
+    userBId: string,
+    transaction?: Transaction,
+  ): Promise<boolean> {
+    const friendship = await Friendship.findOne({
+      where: {
+        status: 'accepted',
+        [Op.or]: [
+          { sender_id: userAId, receiver_id: userBId },
+          { sender_id: userBId, receiver_id: userAId },
+        ],
+      },
+      transaction,
+    });
+    return friendship !== null;
+  }
 }
