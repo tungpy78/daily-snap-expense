@@ -366,7 +366,7 @@
     *   **Module ảnh hưởng**: Mobile Presentation Layer
     *   **Test**: Vuốt qua lại các slide mượt mà, bấm nút "Bắt đầu" chuyển sang màn hình Login.
     *   **Dependency**: T-11.4
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-12.2**: Thiết kế màn hình Đăng nhập (Login Screen)
     *   **Mục tiêu**: Cho phép đăng nhập tài khoản.
     *   **Mô tả**: Form nhập email/username và mật khẩu, tích hợp validation bằng Zod.

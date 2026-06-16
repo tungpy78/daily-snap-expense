@@ -2,8 +2,12 @@
 
 ## Ứng dụng di động (Frontend)
 * **Framework**: React Native với Expo Managed Workflow.
-  - **Template khởi tạo**: `blank-typescript`.
-  - **Expo SDK**: Latest/SDK 56 (tại thời điểm khởi tạo).
+  - **Expo SDK**: SDK 54 (Hạ cấp từ SDK 56 để tương thích với Expo Go trên thiết bị thật).
+  - **Phiên bản cốt lõi**:
+    - `expo@54.0.35`
+    - `react-native@0.81.5`
+    - `react@19.1.0`
+  - **Lý do sử dụng SDK 54**: Ban đầu mobile app được khởi tạo với SDK 56, nhưng ứng dụng Expo Go trên thiết bị thật của người dùng không hỗ trợ runtime này (báo incompatible). Dự án đã được chuyển về SDK 54 để cho phép nghiệm thu trực tiếp bằng Expo Go trên điện thoại thật.
   - **TypeScript**: Được cấu hình và bật sẵn.
   - **Thư mục dự án**: `mobile/`.
 * **Dependencies**:
@@ -25,7 +29,7 @@
   - **Secure token storage**:
     - `expo-secure-store`
 * **Quy tắc cài đặt**:
-  - Các package native được cài bằng `npx expo install` để đảm bảo tương thích Expo SDK 56.
+  - Các package native được cài bằng `npx expo install` để đảm bảo tương thích Expo SDK 54.
   - Các package JavaScript thuần được cài bằng `npm install`.
   - `expo-secure-store` tự thêm plugin vào `mobile/app.json`, đây là thay đổi hợp lệ và được giữ lại để cấu hình môi trường native.
 * **Cấu hình Mobile API Client**:

@@ -4398,6 +4398,111 @@ Ghi rõ task này chỉ thiết lập UI Core:
 - Chưa dùng Zustand.
 - Chưa tích hợp `react-hook-form`/`zod` vào `GlassInput`.
 - Chưa cài thêm thư viện UI/blur/gradient/font/icon.
+
+---
+
+## Technical Note: Hạ cấp Expo SDK từ 56 về SDK 54
+
+### Date
+2026-06-16
+
+### Lý do hạ cấp
+- Ứng dụng di động ban đầu được khởi tạo với Expo SDK 56. Tuy nhiên khi nghiệm thu trên thiết bị thật, ứng dụng Expo Go báo lỗi: `Project is incompatible with this version of Expo Go (This project requires a newer version of Expo Go)`.
+- Do thiết bị thật của người dùng không thể cập nhật bản Expo Go mới nhất tương thích với SDK 56 từ CH Play, nên project bắt buộc phải hạ cấp về SDK 54 để cho phép nghiệm thu trực tiếp bằng Expo Go trên máy thật.
+
+### Giải pháp an toàn đã thực hiện
+1. Sao lưu (backup) tệp `App.tsx` và thư mục `src/` hiện có ra ngoài thư mục dự án (`D:\vibe Coding_mobile_backup_sdk56`).
+2. Xóa thư mục `mobile` cũ.
+3. Tạo lại dự án di động Expo SDK 54 bằng lệnh:
+   ```bash
+   npx -y create-expo-app@latest mobile --template expo-template-blank-typescript@sdk-54
+   ```
+4. Cài đặt lại các dependencies native tương thích với SDK 54 (`react-native-screens`, `react-native-safe-area-context`, `expo-image-picker`, `expo-image-manipulator`, `expo-secure-store`).
+5. Cài đặt các package JavaScript thuần (`@react-navigation/native`, `@react-navigation/native-stack`, `axios`, `zustand`, `react-hook-form`, `zod`).
+6. Chạy `npx expo install --fix` để tối ưu hóa và khôi phục các versions tương thích hoàn toàn.
+7. Khôi phục (restore) toàn bộ file nguồn `App.tsx` và thư mục `src/` đã backup từ SDK 56 sang dự án mới.
+8. Không sửa đổi backend và không sửa đổi `.env`. Không đưa thư mục backup ngoài repo vào Git.
+
+### Phiên bản cốt lõi sau hạ cấp
+- `expo@54.0.35`
+- `react-native@0.81.5`
+- `react@19.1.0`
+
+### Dọn dẹp tài sản (Asset Cleanup)
+- **Xóa các asset Android icon cũ của SDK 56 không cần thiết**:
+  - `mobile/assets/android-icon-background.png`
+  - `mobile/assets/android-icon-foreground.png`
+  - `mobile/assets/android-icon-monochrome.png`
+- **Giữ/thêm asset SDK 54**:
+  - `mobile/assets/icon.png`
+  - `mobile/assets/favicon.png`
+  - `mobile/assets/adaptive-icon.png`
+- **Thêm file `.gitkeep`**: Tạo tệp tin `mobile/assets/images/.gitkeep` để giữ thư mục assets/images rỗng, giúp giải quyết triệt để lỗi `ENOENT: no such file or directory, scandir` của Metro Bundler.
+
+### Cấu hình `app.json`
+- Đảm bảo giữ nguyên plugin bảo mật `"expo-secure-store"` trong `"plugins"`.
+- Các đường dẫn assets được trỏ chính xác tới các file thực tế đang tồn tại trong thư mục `mobile/assets/`.
+
+### Cấu hình `env.ts`
+- `API_BASE_URL` trong `mobile/src/config/env.ts` đang lưu địa chỉ IP LAN của máy host chạy backend: `http://192.168.1.100:5001/api/v1` để thiết bị di động thật trong cùng mạng Wi-Fi có thể kết nối thành công tới local backend.
+
+---
+
+## Review: T-12.1 - Thiết kế giao diện Onboarding Slide
+
+### Date
+2026-06-16
+
+### Tóm tắt triển khai
+- Đã thiết lập màn hình giới thiệu (Onboarding Screen) gồm 3 slide trượt ngang giới thiệu các tính năng cốt lõi của DailySnap Expense.
+- Tạo mới file component `mobile/src/features/auth/screens/OnboardingScreen.tsx`.
+- Sửa đổi `mobile/App.tsx` để mount `OnboardingScreen` và xử lý callback `onFinish`.
+- `App.tsx` sử dụng state local để chuyển đổi hiển thị sang màn hình Login Mockup (chỉ hiển thị thông báo mockup) sau khi bấm "Bắt đầu" để test luồng mà không cần tạo LoginScreen thật hay cấu hình React Navigation.
+
+### Nội dung 3 slide
+- **Slide 1**:
+  - Tiêu đề: *Chụp khoảnh khắc mỗi ngày*
+  - Mô tả: Locket-style photo journal giúp lưu lại khoảnh khắc nhỏ trong ngày.
+- **Slide 2**:
+  - Tiêu đề: *Ghi chép chi tiêu trực quan*
+  - Mô tả: Gắn chi tiêu vào từng khoảnh khắc để hiểu rõ tiền đang đi đâu.
+- **Slide 3**:
+  - Tiêu đề: *Chia sẻ cùng nhóm bạn*
+  - Mô tả: Theo dõi cuộc sống và cảm xúc bạn bè qua timeline riêng tư.
+
+### UI/UX
+- Thiết kế theo định hướng **Sleek Dark Mode** và **Glassmorphism** giả lập (sử dụng màu nền/viền bán trong suốt `rgba`, bo góc lớn và shadow/elevation nhẹ).
+- Tái sử dụng hệ thống tokens của `theme.ts`, `GlassCard` làm card chứa text và `GlassButton` làm nút điều hướng.
+- Không cài thêm bất kỳ thư viện ngoài nào cho hiệu ứng blur, gradient, icon hay font.
+- Các hình vẽ minh họa (Illustrations) được thiết kế trực tiếp bằng View/Text/StyleSheet giả lập máy ảnh, biểu đồ cột, và avatars xếp chồng.
+
+### Tương tác (Interaction)
+- Sử dụng `ScrollView` với `horizontal={true}` và `pagingEnabled={true}` để cho phép vuốt ngang mượt mà.
+- Vuốt ngang bằng tay tự động cập nhật `currentIndex` và Pagination Dots hoạt động tương ứng.
+- Nút bấm điều hướng:
+  - Ở slide 1 và 2 hiển thị nút **"Tiếp tục"** để cuộn tự động sang slide kế tiếp.
+  - Ở slide 3 tự động đổi nút thành **"Bắt đầu"**. Khi bấm nút, hệ thống gọi callback `onFinish` và `App.tsx` hiển thị Login mockup.
+
+### Khắc phục Warning SafeAreaView
+- Thay đổi import `SafeAreaView` từ `react-native` sang `react-native-safe-area-context` ở cả `App.tsx` và `OnboardingScreen.tsx` để sửa triệt để warning deprecated của Expo.
+
+### Lệnh nghiệm thu
+Ghi nhận đã chạy:
+```bash
+cd "D:\vibe Coding\mobile"
+npx tsc --noEmit
+npm run start -- --clear
+```
+Kết quả:
+- `npx tsc --noEmit`: pass sạch lỗi.
+- `npm run start -- --clear`: Metro Bundler chạy tốt, hiển thị QR Code.
+- Expo Go mở app thành công trên thiết bị thật, các tương tác vuốt trượt ngang, dots và buttons hoạt động hoàn toàn chính xác.
+
+### Phạm vi chưa làm
+- Chưa tạo màn hình Login/Register thật.
+- Chưa cấu hình React Navigation chính thức.
+- Chưa tích hợp API Auth.
+- Chưa lưu trạng thái đã xem onboarding để tự động bỏ qua ở các lần khởi động tiếp theo (sẽ thực hiện ở các task sau).
 ```
 
 
