@@ -4298,6 +4298,106 @@ Ghi rõ task này chỉ thiết lập API client/interceptors:
 - Chưa tạo form validation schema.
 - Chưa tích hợp flow đăng nhập đầy đủ.
 - mobile/App.tsx hiện chỉ là smoke test tạm thời.
+
+---
+
+## Review: T-11.4 - Thiết lập hệ thống UI Core (Themes, Styles, Custom Components)
+
+### Date
+2026-06-16
+
+### Tóm tắt triển khai
+Đã thiết lập hệ thống UI Core cho mobile app:
+- `mobile/src/theme/theme.ts`
+- `mobile/src/components/GlassButton.tsx`
+- `mobile/src/components/GlassInput.tsx`
+- `mobile/src/components/GlassCard.tsx`
+
+Đã sửa `mobile/App.tsx` làm showcase/smoke test tạm thời để kiểm tra trực quan UI Core.
+
+### Theme tokens
+`theme.ts` định nghĩa các tokens dùng chung, type-safe:
+- **colors**:
+  - `background` / Dark Slate Grey (`#121824`)
+  - `surfaceGlass` (`rgba(255, 255, 255, 0.08)`)
+  - `borderGlass` (`rgba(255, 255, 255, 0.15)`)
+  - `textPrimary` (`#F8FAFC`)
+  - `textSecondary` (`#94A3B8`)
+  - `primary` / Vibrant Teal (`#0D9488`)
+  - `success` / Neon Green (`#10B981`)
+  - `danger/error` / Rose/Coral (`#F43F5E`)
+- **spacing**: `xs`, `sm`, `md`, `lg`, `xl`
+- **borderRadius**: `sm`, `md`, `lg`, `xl`, `round`
+- **typography**: `font sizes` và `font weights`
+- **shadows**: shadow/elevation nhẹ (`elevation: 2` cho Android, `shadowOpacity: 0.1` cho iOS)
+
+### Components
+
+#### GlassButton
+- Hỗ trợ `title` hoặc `children`.
+- Hỗ trợ `onPress`.
+- Hỗ trợ `disabled` (giảm opacity).
+- Hỗ trợ `loading` bằng `ActivityIndicator`.
+- Hỗ trợ `variant`: `primary`, `secondary`, `danger`.
+- Sử dụng `Pressable` để có feedback chạm vuốt (opacity, scale nhẹ).
+- Style glass bằng background/border bán trong suốt.
+
+#### GlassInput
+- Hỗ trợ `label`, `value`, `onChangeText`.
+- Hỗ trợ `placeholder` mờ.
+- Hỗ trợ `secureTextEntry`.
+- Hỗ trợ `error` message text.
+- Hỗ trợ `keyboardType` và `autoCapitalize`.
+- Border tự động đổi màu khi `focus` (`primary` color) hoặc khi có `error` (`error` color).
+- Chưa tích hợp `react-hook-form` trong task này.
+
+#### GlassCard
+- Container glass dùng chung.
+- Hỗ trợ `children`.
+- Hỗ trợ style `optional`.
+- Có nền bán trong suốt, viền mờ, bo góc lớn, padding theo theme, shadow/elevation nhẹ.
+
+### App.tsx
+`mobile/App.tsx` hiện chỉ là showcase/smoke test tạm thời cho UI Core.
+
+Showcase gồm:
+- Header/title UI Core Preview.
+- GlassCard mẫu.
+- Palette preview.
+- GlassInput normal.
+- GlassInput error.
+- GlassButton primary/secondary/danger.
+- GlassButton disabled/loading.
+
+### Lệnh nghiệm thu
+Ghi nhận đã chạy:
+```bash
+cd "D:\vibe Coding\mobile"
+npx tsc --noEmit
+npm run start
+```
+
+Kết quả:
+- `npx tsc --noEmit`: pass
+- `npm run start`: Metro Bundler chạy thành công, có QR Code Expo Go
+
+### Lỗi đã gặp và cách sửa
+- **Lỗi TypeScript ban đầu**: `GlassButton` và `GlassInput` dùng `push()` trên array style khiến TypeScript infer style shape quá hẹp.
+- **Cách sửa**:
+  - Dùng `StyleProp<ViewStyle>` cho style container.
+  - Dùng `StyleProp<TextStyle>` cho text style.
+  - Trả về style dạng mảng trực tiếp thay vì `push()`.
+  - Không dùng `any`/`as any` và không dùng `eslint-disable`.
+
+### Phạm vi task
+Ghi rõ task này chỉ thiết lập UI Core:
+- Chưa tạo UI Login/Register thật.
+- Chưa tạo Timeline.
+- Chưa cấu hình React Navigation.
+- Chưa gọi API.
+- Chưa dùng Zustand.
+- Chưa tích hợp `react-hook-form`/`zod` vào `GlassInput`.
+- Chưa cài thêm thư viện UI/blur/gradient/font/icon.
 ```
 
 

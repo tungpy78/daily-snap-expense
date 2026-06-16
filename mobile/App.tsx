@@ -1,116 +1,196 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, Button, ActivityIndicator } from 'react-native';
-import { apiClient } from './src/services/api';
-import { tokenStorage } from './src/services/token';
-import { API_BASE_URL } from './src/config/env';
+import { StyleSheet, Text, View, ScrollView, SafeAreaView } from 'react-native';
+import { theme } from './src/theme/theme';
+import { GlassCard } from './src/components/GlassCard';
+import { GlassButton } from './src/components/GlassButton';
+import { GlassInput } from './src/components/GlassInput';
+
+// LƯU Ý: File App.tsx này chỉ đóng vai trò là màn hình Showcase / Smoke Test tạm thời
+// để kiểm tra hiển thị trực quan và kiểm thử các UI Core Components (Glassmorphism + Dark Mode).
+// UI này không phải là giao diện chính thức của ứng dụng di động.
 
 export default function App() {
-  const [status, setStatus] = useState<string>('Ready');
-  const [loading, setLoading] = useState<boolean>(false);
+  const [username, setUsername] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [isSubmitLoading, setIsSubmitLoading] = useState<boolean>(false);
+  const [inputError, setInputError] = useState<string>('');
 
-  const testAuthFlow = async () => {
-    setLoading(true);
-    try {
-      setStatus('1. Saving mock expired access token and valid mock refresh token...');
-      await tokenStorage.setTokens({
-        accessToken: 'mock-expired-access-token',
-        refreshToken: 'mock-valid-refresh-token',
-      });
-
-      setStatus('2. Calling api /users/profile (should trigger 401 and refresh interceptor)...');
-      
-      const res = await apiClient.get('/users/profile');
-      setStatus(`Success: ${JSON.stringify(res.data)}`);
-    } catch (error) {
-      const errMsg = error instanceof Error ? error.message : String(error);
-      console.log('[App] Test failed or actual error:', errMsg);
-      setStatus(`Failed: ${errMsg} (Check Metro console logs for interceptor steps)`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleClearTokens = async () => {
-    setLoading(true);
-    try {
-      await tokenStorage.clearTokens();
-      setStatus('Tokens cleared successfully.');
-    } catch (error) {
-      const errMsg = error instanceof Error ? error.message : String(error);
-      setStatus(`Failed to clear tokens: ${errMsg}`);
-    } finally {
-      setLoading(false);
-    }
+  const handleDemoPress = () => {
+    setIsSubmitLoading(true);
+    setInputError('');
+    setTimeout(() => {
+      setIsSubmitLoading(false);
+      if (!username) {
+        setInputError('Tên đăng nhập không được để trống.');
+      } else {
+        alert(`Xin chào ${username}!`);
+      }
+    }, 1500);
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>DailySnap Expense API Client Test</Text>
-      <Text style={styles.subtitle}>API URL: {API_BASE_URL}</Text>
-      
-      <View style={styles.statusBox}>
-        <Text style={styles.statusText}>{status}</Text>
-      </View>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar style="light" />
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <Text style={styles.title}>DailySnap Expense</Text>
+        <Text style={styles.subtitle}>UI Core Preview (Showcase Tạm Thời)</Text>
 
-      {loading && (
-        <ActivityIndicator size="large" color="#008080" style={styles.loader} />
-      )}
+        {/* 1. GlassCard mẫu */}
+        <GlassCard style={styles.card}>
+          <Text style={styles.cardTitle}>Thông tin Showcase</Text>
+          <Text style={styles.cardBody}>
+            Màn hình này trực quan hóa các UI Component mờ (Glassmorphism) trên nền tối Sleek Dark Mode.
+          </Text>
+        </GlassCard>
 
-      <View style={styles.buttonContainer}>
-        <Button title="Test API Interceptor" onPress={testAuthFlow} color="#008080" />
-      </View>
-      
-      <View style={styles.buttonContainer}>
-        <Button title="Clear Tokens" onPress={handleClearTokens} color="#d9534f" />
-      </View>
+        {/* 2. Vùng hiển thị Palette màu sắc */}
+        <GlassCard style={styles.card}>
+          <Text style={styles.cardTitle}>Bảng màu & Tokens</Text>
+          <View style={styles.paletteContainer}>
+            <View style={[styles.colorBadge, { backgroundColor: theme.colors.primary }]}>
+              <Text style={styles.badgeText}>Teal</Text>
+            </View>
+            <View style={[styles.colorBadge, { backgroundColor: theme.colors.success }]}>
+              <Text style={styles.badgeText}>Green</Text>
+            </View>
+            <View style={[styles.colorBadge, { backgroundColor: theme.colors.danger }]}>
+              <Text style={styles.badgeText}>Rose</Text>
+            </View>
+            <View style={[styles.colorBadge, { backgroundColor: theme.colors.surfaceGlass }]}>
+              <Text style={styles.badgeText}>Glass</Text>
+            </View>
+          </View>
+        </GlassCard>
 
-      <StatusBar style="auto" />
-    </View>
+        {/* 3. GlassInput Components */}
+        <GlassCard style={styles.card}>
+          <Text style={styles.cardTitle}>Input Fields</Text>
+          
+          <GlassInput
+            label="Tên đăng nhập"
+            value={username}
+            onChangeText={(text) => {
+              setUsername(text);
+            }}
+            placeholder="Nhập tên đăng nhập..."
+          />
+
+          <GlassInput
+            label="Mật khẩu (Demo Error State)"
+            value={password}
+            onChangeText={(text) => {
+              setPassword(text);
+            }}
+            placeholder="Nhập mật khẩu..."
+            secureTextEntry={true}
+            error={inputError}
+          />
+        </GlassCard>
+
+        {/* 4. GlassButton Variants */}
+        <GlassCard style={styles.card}>
+          <Text style={styles.cardTitle}>Buttons</Text>
+          
+          <GlassButton
+            title="Đăng Nhập (Primary)"
+            variant="primary"
+            loading={isSubmitLoading}
+            onPress={handleDemoPress}
+            style={styles.buttonSpacing}
+          />
+
+          <GlassButton
+            title="Hủy Bỏ (Secondary)"
+            variant="secondary"
+            onPress={() => {
+              setUsername('');
+              setPassword('');
+              setInputError('');
+            }}
+            style={styles.buttonSpacing}
+          />
+
+          <GlassButton
+            title="Xóa Tài Khoản (Danger)"
+            variant="danger"
+            onPress={() => {
+              alert('Danger Action Triggered!');
+            }}
+            style={styles.buttonSpacing}
+          />
+
+          <GlassButton
+            title="Nút bị Disabled"
+            variant="primary"
+            disabled={true}
+            onPress={() => {}}
+            style={styles.buttonSpacing}
+          />
+        </GlassCard>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: theme.colors.background,
+  },
+  scrollContainer: {
+    padding: theme.spacing.lg,
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
   },
   title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#212529',
+    fontSize: theme.typography.sizes.xl,
+    fontWeight: theme.typography.weights.bold,
+    color: theme.colors.textPrimary,
+    marginTop: theme.spacing.xl,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 14,
-    color: '#6c757d',
-    marginBottom: 20,
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xl,
     textAlign: 'center',
   },
-  statusBox: {
+  card: {
     width: '100%',
-    padding: 15,
-    backgroundColor: '#e9ecef',
-    borderRadius: 8,
-    marginBottom: 20,
-    minHeight: 80,
+    marginBottom: theme.spacing.lg,
+  },
+  cardTitle: {
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.weights.bold,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.sm,
+  },
+  cardBody: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.textSecondary,
+    lineHeight: 20,
+  },
+  paletteContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: theme.spacing.xs,
+  },
+  colorBadge: {
+    flex: 1,
+    height: 36,
+    borderRadius: theme.borderRadius.sm,
     justifyContent: 'center',
     alignItems: 'center',
+    marginHorizontal: theme.spacing.xs,
+    borderColor: theme.colors.borderGlass,
+    borderWidth: 1,
   },
-  statusText: {
-    fontSize: 15,
-    color: '#495057',
-    textAlign: 'center',
+  badgeText: {
+    fontSize: 10,
+    fontWeight: theme.typography.weights.bold,
+    color: theme.colors.textPrimary,
   },
-  loader: {
-    marginBottom: 20,
-  },
-  buttonContainer: {
-    width: '100%',
-    marginBottom: 12,
+  buttonSpacing: {
+    marginBottom: theme.spacing.sm,
   },
 });

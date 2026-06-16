@@ -355,7 +355,7 @@
     *   **Module ảnh hưởng**: Mobile UI Core
     *   **Test**: Hiển thị thử các component trên màn hình nháp kiểm tra tính thẩm mỹ trực quan.
     *   **Dependency**: T-11.2
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 
 ---
 

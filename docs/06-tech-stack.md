@@ -35,6 +35,22 @@
     - Khi test bằng thiết bị thật trong cùng mạng Wi-Fi, cần đổi `API_BASE_URL` sang LAN IP của máy chạy backend, ví dụ: `http://192.168.1.100:5001/api/v1`.
   - **Lưu trữ Token**: [**`mobile/src/services/token.ts`**](file:///d:/vibe%20Coding/mobile/src/services/token.ts), sử dụng `expo-secure-store` để lưu trữ Access Token và Refresh Token bảo mật.
   - **Axios Instance & Interceptors**: [**`mobile/src/services/api.ts`**](file:///d:/vibe%20Coding/mobile/src/services/api.ts). Tích hợp Request Interceptor tự động đính kèm token và Response Interceptor tự động thực hiện luồng Refresh Token khi gặp lỗi HTTP 401.
+* **Cấu hình Mobile UI Core**:
+  - **Định nghĩa Theme Tokens**: Được định nghĩa tại [**`mobile/src/theme/theme.ts`**](file:///d:/vibe%20Coding/mobile/src/theme/theme.ts), bao gồm các token:
+    - `colors/palette`
+    - `spacing`
+    - `borderRadius`
+    - `typography`
+    - `shadows/elevation`
+  - **UI Core Components**: Được đặt tại thư mục `mobile/src/components/`, bao gồm các component nền tảng:
+    - [**`GlassButton`**](file:///d:/vibe%20Coding/mobile/src/components/GlassButton.tsx)
+    - [**`GlassInput`**](file:///d:/vibe%20Coding/mobile/src/components/GlassInput.tsx)
+    - [**`GlassCard`**](file:///d:/vibe%20Coding/mobile/src/components/GlassCard.tsx)
+  - **Định hướng giao diện**:
+    - Thiết kế theo chủ đề **Sleek Dark Mode**.
+    - Hiệu ứng **Glassmorphism** được giả lập bằng màu nền bán trong suốt (`rgba background`), border bán trong suốt và shadow/elevation nhẹ.
+    - Không sử dụng các thư viện blur/backdrop-filter bên ngoài.
+    - Không cài thêm bất kỳ thư viện UI/blur/gradient/font/icon nào trong phạm vi task này.
 
 ## Backend API
 * **Runtime**: Node.js
