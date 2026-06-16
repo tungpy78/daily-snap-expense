@@ -63,3 +63,10 @@ db.files
 .DS_Store
 .AppleDouble
 .LSOverride
+
+# Mobile app patterns
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/.env
+mobile/.env.*

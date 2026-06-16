@@ -1,8 +1,11 @@
 # Công nghệ sử dụng (Technology Stack)
 
 ## Ứng dụng di động (Frontend)
-* **Framework**: React Native với Expo (Sử dụng Managed workflow giúp tăng tốc độ phát triển và tối ưu hóa tính tương thích đa nền tảng).
-* **Ngôn ngữ**: TypeScript (Đảm bảo Type safety và code tự tường minh hơn).
+* **Framework**: React Native với Expo Managed Workflow.
+  - **Template khởi tạo**: `blank-typescript`.
+  - **Expo SDK**: Latest/SDK 56 (tại thời điểm khởi tạo).
+  - **TypeScript**: Được cấu hình và bật sẵn.
+  - **Thư mục dự án**: `mobile/`.
 * **Navigation**: React Navigation (Hỗ trợ Native-stack navigation, tab bar và giao diện modal).
 * **Quản lý Form**: React Hook Form (Tối ưu hiệu năng và quản lý state cho form nhập liệu).
 * **Validation**: Zod (Định nghĩa schema validate dữ liệu form và payload API).

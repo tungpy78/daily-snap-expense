@@ -334,7 +334,7 @@
     *   **Module ảnh hưởng**: Mobile root
     *   **Test**: Khởi động Expo server thành công, chạy ứng dụng hiển thị màn hình chào mừng trên simulator/thiết bị thật.
     *   **Dependency**: T-1.1
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-11.2**: Cài đặt các thư viện bổ trợ thiết yếu
     *   **Mục tiêu**: Cung cấp đầy đủ công cụ lập trình cho mobile app.
     *   **Mô tả**: Cài đặt `react-navigation`, `axios`, `zustand`, `react-hook-form`, `zod`, `expo-image-picker`, `expo-image-manipulator`, `expo-secure-store`.

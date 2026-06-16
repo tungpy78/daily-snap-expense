@@ -4050,6 +4050,75 @@ npm run test: 15 suites passed, 279 tests passed
 build: pass
 ```
 
+---
+
+## Review: T-11.1 - Khởi tạo dự án React Native Expo
+
+### Date
+2026-06-16
+
+### Tóm tắt triển khai
+Đã khởi tạo Expo mobile app tại:
+```txt
+mobile/
+```
+
+Các file/thư mục chính được tạo:
+```txt
+mobile/package.json
+mobile/tsconfig.json
+mobile/app.json
+mobile/App.tsx
+```
+
+`.gitignore` root đã được cập nhật để bỏ qua các file/thư mục mobile không nên commit:
+```txt
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/.env
+mobile/.env.*
+```
+
+Không tạo nested Git repository trong `mobile/`.
+Không sửa backend.
+Không sửa database.
+Không sửa `.env`.
+Không cài thêm thư viện ngoài template Expo.
+Không code màn hình nghiệp vụ.
+
+### Lệnh nghiệm thu
+Ghi nhận đã chạy:
+```bash
+cd "D:\vibe Coding\mobile"
+npx tsc --noEmit
+npm run start
+```
+
+Kết quả:
+```txt
+npx tsc --noEmit: pass
+npm run start: Metro Bundler chạy thành công, có QR Code Expo Go
+```
+
+Git status trước docs:
+```txt
+modified: .gitignore
+untracked: mobile/
+```
+
+### Phạm vi task
+Ghi rõ task này chỉ khởi tạo mobile app base:
+```txt
+- Chưa cài React Navigation.
+- Chưa cài Axios.
+- Chưa cài Zustand/Redux.
+- Chưa cài Zod/React Hook Form.
+- Chưa tạo màn hình Login/Register/Timeline.
+- Chưa tích hợp API backend.
+```
+Các phần trên sẽ thuộc các task sau.
+
 
 
 
