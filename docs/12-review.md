@@ -4119,6 +4119,109 @@ Ghi rõ task này chỉ khởi tạo mobile app base:
 ```
 Các phần trên sẽ thuộc các task sau.
 
+---
+
+## Review: T-11.2 - Cài đặt các thư viện bổ trợ thiết yếu
+
+### Date
+2026-06-16
+
+### Tóm tắt triển khai
+Đã cài các thư viện bổ trợ thiết yếu cho mobile app trong thư mục:
+```txt
+mobile/
+```
+
+Các file thay đổi:
+```txt
+mobile/package.json
+mobile/package-lock.json
+mobile/app.json
+```
+
+Không tạo source code mới.
+Không tạo màn hình.
+Không cấu hình navigation.
+Không tạo Axios client.
+Không tạo Zustand store.
+Không tạo form/schema.
+Không sửa backend.
+Không sửa `.env`.
+Không chạy `npm audit fix --force`.
+
+### Package groups
+Ghi nhận các nhóm package:
+```txt
+Navigation:
+- @react-navigation/native
+- @react-navigation/native-stack
+- react-native-screens
+- react-native-safe-area-context
+
+API:
+- axios
+
+State:
+- zustand
+
+Form/Validation:
+- react-hook-form
+- zod
+
+Image:
+- expo-image-picker
+- expo-image-manipulator
+
+Security:
+- expo-secure-store
+```
+
+### app.json change
+Ghi nhận `expo-secure-store` tự thêm plugin vào `mobile/app.json`:
+```json
+"plugins": [
+  "expo-secure-store"
+]
+```
+Giải thích:
+- Đây là thay đổi hợp lệ do Expo CLI thêm khi cài `expo-secure-store`.
+- Plugin giúp cấu hình native tương ứng cho secure token storage.
+- Không restore `mobile/app.json`.
+
+### Lệnh nghiệm thu
+Ghi nhận đã chạy:
+```bash
+cd "D:\vibe Coding\mobile"
+npx tsc --noEmit
+npm run start
+```
+
+Kết quả:
+```txt
+npx tsc --noEmit: pass
+npm run start: Metro Bundler chạy thành công, có QR Code Expo Go
+```
+
+Ghi nhận đã kiểm tra package:
+```bash
+npm ls @react-navigation/native @react-navigation/native-stack axios zustand react-hook-form zod react-native-screens react-native-safe-area-context expo-image-picker expo-image-manipulator expo-secure-store --depth=0
+```
+
+Kết quả: đủ package, không thiếu package.
+
+### Phạm vi task
+Ghi rõ task này chỉ cài dependencies:
+```txt
+- Chưa cấu hình React Navigation.
+- Chưa tạo navigator.
+- Chưa tạo Axios client.
+- Chưa tạo Zustand store.
+- Chưa tạo form validation schema.
+- Chưa tạo màn hình Login/Register/Timeline.
+- Chưa tích hợp API backend.
+```
+Các phần trên thuộc các task sau.
+
 
 
 

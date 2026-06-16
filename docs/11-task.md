@@ -341,7 +341,7 @@
     *   **Module ảnh hưởng**: Mobile package.json
     *   **Test**: Chạy npm install thành công, khởi động app không bị lỗi xung đột package.
     *   **Dependency**: T-11.1
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-11.3**: Thiết lập HTTP Axios Client và Interceptors
     *   **Mục tiêu**: Kết nối tự động với Backend API một cách bảo mật.
     *   **Mô tả**: Cấu hình baseURL, viết interceptors đính kèm accessToken vào header, tự động gọi API refresh token và thử lại request nếu gặp lỗi token hết hạn (HTTP 401).

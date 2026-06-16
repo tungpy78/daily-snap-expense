@@ -6,11 +6,28 @@
   - **Expo SDK**: Latest/SDK 56 (tại thời điểm khởi tạo).
   - **TypeScript**: Được cấu hình và bật sẵn.
   - **Thư mục dự án**: `mobile/`.
-* **Navigation**: React Navigation (Hỗ trợ Native-stack navigation, tab bar và giao diện modal).
-* **Quản lý Form**: React Hook Form (Tối ưu hiệu năng và quản lý state cho form nhập liệu).
-* **Validation**: Zod (Định nghĩa schema validate dữ liệu form và payload API).
-* **HTTP Client**: Axios (Cấu hình intercepter xử lý tự động đính kèm và refresh JWT).
-* **Quản lý State (State Management)**: Zustand (Nhẹ, quản lý state dựa trên hook đơn giản và hiệu quả).
+* **Dependencies**:
+  - **Navigation**:
+    - `@react-navigation/native`
+    - `@react-navigation/native-stack`
+    - `react-native-screens`
+    - `react-native-safe-area-context`
+  - **API client**:
+    - `axios`
+  - **State management**:
+    - `zustand`
+  - **Form & validation**:
+    - `react-hook-form`
+    - `zod`
+  - **Media/image**:
+    - `expo-image-picker`
+    - `expo-image-manipulator`
+  - **Secure token storage**:
+    - `expo-secure-store`
+* **Quy tắc cài đặt**:
+  - Các package native được cài bằng `npx expo install` để đảm bảo tương thích Expo SDK 56.
+  - Các package JavaScript thuần được cài bằng `npm install`.
+  - `expo-secure-store` tự thêm plugin vào `mobile/app.json`, đây là thay đổi hợp lệ và được giữ lại để cấu hình môi trường native.
 
 ## Backend API
 * **Runtime**: Node.js
