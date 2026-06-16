@@ -298,7 +298,7 @@
     *   **Module ảnh hưởng**: DB Module (Migrations)
     *   **Test**: Chạy migration thành công.
     *   **Dependency**: T-7.1
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-9.2**: API Thả Reaction vào Snap (`POST /api/v1/snaps/:id/react`)
     *   **Mục tiêu**: Tương tác cảm xúc trên snap của bạn bè.
     *   **Mô tả**: Thêm bản ghi reaction mới. Kiểm tra điều kiện snap thuộc về chính user hoặc thuộc về một người bạn đã ACCEPTED và snap không ở chế độ private.

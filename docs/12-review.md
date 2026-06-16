@@ -3568,6 +3568,66 @@ npm run test: 12 suites passed, 251 tests passed
 build: pass
 ```
 
+---
+
+## Review: T-9.1 - Tạo migration cho bảng reactions
+
+### Date
+2026-06-16
+
+### Tóm tắt triển khai
+Đã tạo migration:
+`src/shared/database/migrations/20260616000001-create-reactions.js`
+
+Migration tạo bảng:
+`reactions`
+
+Schema:
+```txt
+id UUID PK NOT NULL
+snap_id UUID NOT NULL
+user_id UUID NOT NULL
+emoji VARCHAR(32) NOT NULL
+created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+```
+
+Foreign keys:
+- `snap_id` -> `snaps.id` ON DELETE CASCADE ON UPDATE CASCADE
+- `user_id` -> `users.id` ON DELETE CASCADE ON UPDATE CASCADE
+
+Constraint/index:
+- `reactions_snap_id_fk`
+- `reactions_user_id_fk`
+- `reactions_snap_user_unique` on `(snap_id, user_id)`
+- `reactions_user_id_index` on `user_id`
+
+Unique constraint `(snap_id, user_id)` đảm bảo mỗi user chỉ có một reaction trên một snap. Việc đổi emoji sẽ được xử lý ở service/API task sau bằng update reaction hiện có.
+
+### Phạm vi task
+Task này chỉ làm migration.
+Không làm:
+- Không tạo Reaction model.
+- Không tạo repository/service/controller/validator/route.
+- Không tạo API reaction.
+- Không sửa `app.ts`.
+- Không sửa `.env`.
+- Không sửa migration cũ.
+
+### Kết quả nghiệm thu
+```txt
+db:migrate: pass
+db:migrate:status: migration T-9.1 up
+db:migrate:undo: pass
+db:migrate lại: pass
+format: pass
+format:check: pass
+lint: pass
+test: 12 suites passed, 251 tests passed
+build: pass
+```
+
+
 
 
 
