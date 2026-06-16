@@ -4222,6 +4222,84 @@ Ghi rõ task này chỉ cài dependencies:
 ```
 Các phần trên thuộc các task sau.
 
+---
+
+## Review: T-11.3 - Thiết lập HTTP Axios Client và Interceptors
+
+### Date
+2026-06-16
+
+### Tóm tắt triển khai
+Đã thiết lập API client tập trung cho mobile app và cài đặt interceptors để đính kèm token và tự động làm mới token (Refresh Token) khi Access Token hết hạn:
+- `mobile/src/config/env.ts`
+- `mobile/src/services/token.ts`
+- `mobile/src/services/api.ts`
+
+Đã sửa `mobile/App.tsx` làm màn hình smoke test tạm thời để kiểm tra API client.
+Không sửa backend, không sửa `.env`, không cài thêm package và không chạy `npm audit fix --force`.
+
+### Trách nhiệm từng file
+- **`mobile/src/config/env.ts`**: Lưu `API_BASE_URL` tập trung trỏ đến Backend API v1, kèm ghi chú hướng dẫn thay đổi URL cho Android emulator hay thiết bị thật.
+- **`mobile/src/services/token.ts`**: Lưu trữ Access Token và Refresh Token bảo mật sử dụng `expo-secure-store`. Cung cấp các phương thức `getAccessToken`, `getRefreshToken`, `setTokens`, `clearTokens`. Không log token thật (chỉ log trạng thái có/không có token).
+- **`mobile/src/services/api.ts`**: Khởi tạo Axios instance dùng chung, đăng ký Request Interceptor (đính kèm Token Authorization) và Response Interceptor (xử lý lỗi 401, tự động gọi endpoint refresh token và retry request ban đầu).
+
+### Refresh token endpoint
+- **Endpoint**: `POST /auth/refresh`
+- **Full URL**: `${API_BASE_URL}/auth/refresh`
+- **Request Body**:
+```json
+{
+  "refreshToken": "..."
+}
+```
+- **Căn cứ**: Lấy từ `docs/08-api.md` và backend auth route hiện có.
+
+### Interceptor behavior
+- **Request Interceptor**:
+  - Mỗi request được gửi đi sẽ đọc `accessToken` từ `SecureStore`.
+  - Nếu có `accessToken`, tự động gắn vào Header `Authorization: Bearer <token>`.
+  - Không log token thật.
+- **Response Interceptor**:
+  - Nếu response không phải 401 thì reject bình thường.
+  - Nếu 401 và request chưa retry:
+    - Đọc `refreshToken` từ `SecureStore`. Nếu không có, gọi `clearTokens()` và reject.
+    - Nếu có, gọi POST `/auth/refresh` sử dụng một Axios client riêng (`refreshClient`) để tránh vòng lặp interceptor vô hạn.
+    - Khi refresh thành công, cập nhật cặp token mới và thực hiện retry request ban đầu với header Authorization mới.
+    - Khi refresh thất bại, gọi `clearTokens()` và reject.
+  - Sử dụng cờ `_retry` (bằng `RetriableRequestConfig`) để tránh lặp vô hạn.
+  - Tích hợp cơ chế hàng đợi Promise (`failedQueue`) để gom nhóm và retry đồng thời khi có nhiều request bị lỗi 401 cùng lúc.
+
+### Ghi chú kiểm thử
+```txt
+Refresh flow code path đã được cài đặt type-safe. Full manual refresh sẽ kiểm thử đầy đủ ở task login/auth mobile sau khi có token thật.
+```
+
+### Lệnh nghiệm thu
+Ghi nhận đã chạy:
+```bash
+cd "D:\vibe Coding\mobile"
+npx tsc --noEmit
+npm run start
+```
+
+Kết quả:
+```txt
+npx tsc --noEmit: pass
+npm run start: Metro Bundler chạy thành công, có QR Code Expo Go
+```
+
+### Phạm vi task
+Ghi rõ task này chỉ thiết lập API client/interceptors:
+```txt
+- Chưa tạo UI Login/Register thật.
+- Chưa tạo Timeline.
+- Chưa cấu hình React Navigation.
+- Chưa tạo Zustand store.
+- Chưa tạo form validation schema.
+- Chưa tích hợp flow đăng nhập đầy đủ.
+- mobile/App.tsx hiện chỉ là smoke test tạm thời.
+```
+
 
 
 

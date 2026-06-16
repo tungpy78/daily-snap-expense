@@ -348,7 +348,7 @@
     *   **Module ảnh hưởng**: Mobile Services (`api.ts`)
     *   **Test**: Giả lập token hết hạn, kiểm tra xem client có tự động refresh và lấy lại được dữ liệu không.
     *   **Dependency**: T-11.2
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-11.4**: Thiết lập hệ thống UI Core (Themes, Styles, Custom Components)
     *   **Mục tiêu**: Đảm bảo giao diện đồng nhất và cao cấp.
     *   **Mô tả**: Định nghĩa bảng màu (Teal, Dark background), các kiểu chữ dùng chung, thiết kế các UI Component cơ bản (nút bấm Glassmorphism, Input Field).

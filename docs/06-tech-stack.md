@@ -28,6 +28,13 @@
   - Các package native được cài bằng `npx expo install` để đảm bảo tương thích Expo SDK 56.
   - Các package JavaScript thuần được cài bằng `npm install`.
   - `expo-secure-store` tự thêm plugin vào `mobile/app.json`, đây là thay đổi hợp lệ và được giữ lại để cấu hình môi trường native.
+* **Cấu hình Mobile API Client**:
+  - **Công nghệ**: Sử dụng Axios làm HTTP client tập trung.
+  - **Cấu hình base URL**: [**`mobile/src/config/env.ts`**](file:///d:/vibe%20Coding/mobile/src/config/env.ts).
+    - `API_BASE_URL` mặc định hiện tại trỏ tới Android emulator: `http://10.0.2.2:5001/api/v1`.
+    - Khi test bằng thiết bị thật trong cùng mạng Wi-Fi, cần đổi `API_BASE_URL` sang LAN IP của máy chạy backend, ví dụ: `http://192.168.1.100:5001/api/v1`.
+  - **Lưu trữ Token**: [**`mobile/src/services/token.ts`**](file:///d:/vibe%20Coding/mobile/src/services/token.ts), sử dụng `expo-secure-store` để lưu trữ Access Token và Refresh Token bảo mật.
+  - **Axios Instance & Interceptors**: [**`mobile/src/services/api.ts`**](file:///d:/vibe%20Coding/mobile/src/services/api.ts). Tích hợp Request Interceptor tự động đính kèm token và Response Interceptor tự động thực hiện luồng Refresh Token khi gặp lỗi HTTP 401.
 
 ## Backend API
 * **Runtime**: Node.js
