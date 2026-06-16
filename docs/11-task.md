@@ -323,7 +323,7 @@
     *   **Module ảnh hưởng**: Statistics Module
     *   **Test**: Integration test gọi API thống kê trả về đầy đủ các trường dữ liệu cần thiết.
     *   **Dependency**: T-10.1, T-3.6
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 
 ---
 

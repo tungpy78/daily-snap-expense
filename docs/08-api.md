@@ -523,40 +523,42 @@
 ---
 
 ### 7. Nhóm API Statistics
-* **Quyền hạn (Permission)**: Đã đăng nhập (Authenticated User - chỉ tính toán dữ liệu chưa bị xóa của chính mình).
+* **Quyền hạn (Permission)**: Đã đăng nhập (`authMiddleware` - chỉ tính toán dữ liệu chưa bị xóa của chính mình).
 
 #### Lấy tóm tắt thống kê chi tiêu (Get Statistics Summary)
 * **Endpoint**: `GET /api/v1/statistics`
 * **Headers**: `Authorization: Bearer [accessToken]`
-* **Query Parameters**:
-  - `month` (Number, 1-12)
-  - `year` (Number, YYYY)
-* **Response (200 OK)**:
+* **Query Parameters (Optional)**:
+  - `month` (Integer, 1-12)
+  - `year` (Integer, 1970-2100)
+* **Behavior**:
+  - Nếu không truyền `month`/`year` thì dùng tháng/năm hiện tại của server.
+  - `dailyTotal` luôn tính theo ngày hiện tại của server.
+  - `recentTrend` luôn tính 7 ngày gần nhất kết thúc tại ngày hiện tại của server.
+  - `monthlyTotal` và `categoryBreakdown` tính theo query `month`/`year` nếu có, nếu không thì tháng/năm hiện tại.
+* **Success Response (200 OK)**:
 ```json
 {
   "success": true,
   "data": {
-    "dailyTotal": 120000.00, // Tổng ngày hiện tại
-    "monthlyTotal": 3450000.00, // Tổng tháng hiện tại
+    "dailyTotal": 120000,
+    "monthlyTotal": 3450000,
     "categoryBreakdown": [
       {
-        "categoryId": "cat-system-food",
+        "categoryId": "category-uuid",
         "categoryName": "Food",
-        "totalAmount": 1800000.00,
+        "totalAmount": 1800000,
         "percentage": 52.17
-      },
-      {
-        "categoryId": "trans-uuid-3333",
-        "categoryName": "Transport",
-        "totalAmount": 850000.00,
-        "percentage": 24.64
       }
     ],
     "recentTrend": [
-      { "date": "2026-06-07", "total": 150000.00 },
-      { "date": "2026-06-08", "total": 0.00 },
-      { "date": "2026-06-09", "total": 450000.00 }
+      { "date": "2026-06-10", "total": 150000 },
+      { "date": "2026-06-11", "total": 0 }
     ]
   }
 }
 ```
+* **Error Cases**:
+  - **401 UNAUTHORIZED**: Nếu thiếu token.
+  - **401 INVALID_TOKEN**: Nếu token sai.
+  - **400 VALIDATION_ERROR**: Nếu `month`/`year` không hợp lệ (không phải số nguyên, nằm ngoài khoảng cho phép).

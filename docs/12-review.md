@@ -3923,6 +3923,133 @@ npm run test: 14 suites passed, 271 tests passed
 build: pass
 ```
 
+---
+
+## Review: T-10.2 - API lấy tóm tắt thống kê tài chính (GET /api/v1/statistics)
+
+### Date
+2026-06-16
+
+### Tóm tắt triển khai
+Đã triển khai endpoint:
+```txt
+GET /api/v1/statistics
+```
+
+Route protected:
+```txt
+authMiddleware
+```
+
+Route flow:
+```txt
+Route -> authMiddleware -> validateRequest(statisticsQuerySchema) -> StatisticsController.getSummary -> StatisticsService.getStatisticsSummary -> StatisticsRepository -> Model/Database
+```
+
+Các file tạo mới:
+- `backend/src/modules/statistics/validators/statistics.validator.ts`
+- `backend/src/modules/statistics/controllers/statistics.controller.ts`
+- `backend/src/modules/statistics/routes/statistics.routes.ts`
+- `backend/src/modules/statistics/routes/statistics.routes.spec.ts`
+
+Các file chỉnh sửa:
+- `backend/src/routes/index.ts`
+
+Không tạo migration mới.
+Không sửa migration cũ.
+Không sửa `.env`.
+Không sửa `app.ts`.
+
+### API behavior
+Endpoint:
+```txt
+GET /api/v1/statistics
+```
+
+Query optional:
+- `month?: integer, 1-12`
+- `year?: integer, 1970-2100`
+
+Controller behavior:
+1. Lấy `currentUserId` từ `req.user.id`.
+2. Lấy `month`/`year` đã validate từ query.
+3. Tính ngày hiện tại của server dạng `YYYY-MM-DD`.
+4. Nếu `month`/`year` không truyền thì dùng tháng/năm hiện tại của server.
+5. Gọi `StatisticsService.getStatisticsSummary(currentUserId, queryDate, targetYear, targetMonth)`.
+6. Trả response `200 OK`.
+
+- Controller không chứa logic aggregate.
+- Controller không query DB trực tiếp.
+- API tái sử dụng `StatisticsService` từ T-10.1.
+
+### Validator
+Ghi nhận `statisticsQuerySchema` validate:
+- `month` optional integer 1-12
+- `year` optional integer 1970-2100
+
+Các query invalid trả `400 VALIDATION_ERROR`:
+- `month=abc`
+- `month=1.5`
+- `month=0`
+- `month=-1`
+- `month=13`
+- `year=abc`
+- `year=1.5`
+- `year=1969`
+- `year=2101`
+
+### Test cases
+Ghi nhận đã bổ sung integration tests cho `GET /api/v1/statistics`, bao phủ:
+1. Không gửi token -> `401 UNAUTHORIZED`.
+2. Token invalid -> `401 INVALID_TOKEN`.
+3. `month` không phải integer -> `400 VALIDATION_ERROR`.
+4. `month` ngoài khoảng 1-12 -> `400 VALIDATION_ERROR`.
+5. `year` không phải integer -> `400 VALIDATION_ERROR`.
+6. `year` ngoài khoảng 1970-2100 -> `400 VALIDATION_ERROR`.
+7. Gọi thành công không query params -> dùng tháng/năm hiện tại của server.
+8. Gọi thành công với `month`/`year` hợp lệ -> dùng tháng/năm được truyền cho `monthlyTotal`/`categoryBreakdown`.
+9. `dailyTotal` và `recentTrend` dùng ngày hiện tại của server.
+10. Soft-deleted expenses không được tính.
+11. Expense của user khác không ảnh hưởng dữ liệu user hiện tại.
+
+Số lượng test:
+- `statistics routes test riêng: 1 suite passed, 8 tests passed`
+
+Và tổng test toàn dự án:
+- `15 suites passed, 279 tests passed`
+
+### Test isolation
+Ghi nhận:
+- Ban đầu dùng fake timers trong integration test làm Supertest/Sequelize bị timeout.
+- Đã bỏ fake timers, dùng helper tính ngày hiện tại thật theo local timezone của server.
+- Test explicit month/year dùng user riêng để tránh dữ liệu test trước cộng dồn.
+- Tracking IDs riêng cho expenses, categories, users.
+- Cleanup theo ID, không cleanup toàn bảng.
+- Cleanup đúng thứ tự: `expenses -> categories custom -> users`.
+- Không dùng `any`/`as any`.
+- Không dùng `eslint-disable`.
+- Mọi `if/else` dùng block `{}` đầy đủ.
+
+### Lỗi đã gặp và cách khắc phục
+1. Lỗi timeout toàn bộ `statistics.routes.spec.ts`:
+   - **Nguyên nhân**: Dùng Jest fake timers trong integration test Express/Supertest/Sequelize.
+   - **Hậu quả**: Request không hoàn tất, `afterAll` đóng connection trong khi query còn chạy.
+   - **Cách sửa**: Bỏ fake timers, dùng ngày hiện tại thật của server trong test.
+2. Lỗi `monthlyTotal` expected 80000 nhưng received 160000:
+   - **Nguyên nhân**: Test explicit month/year dùng chung user với test trước, dữ liệu tháng 07/2026 bị cộng dồn.
+   - **Cách sửa**: Tạo user/token/category/expense riêng cho test explicit month/year.
+
+### Kết quả nghiệm thu
+```txt
+statistics route test riêng: 1 suite passed, 8 tests passed
+full jest runInBand: 15 suites passed, 279 tests passed
+format: pass
+format:check: pass
+lint: pass, không warning no-explicit-any hoặc unused variable
+npm run test: 15 suites passed, 279 tests passed
+build: pass
+```
+
 
 
 

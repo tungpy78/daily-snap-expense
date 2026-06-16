@@ -5,6 +5,7 @@ import categoryRoutes from '../modules/categories/routes/category.routes';
 import expenseRoutes from '../modules/expenses/routes/expense.routes';
 import snapRoutes from '../modules/snaps/routes/snap.routes';
 import friendshipRoutes from '../modules/friendships/routes/friendship.routes';
+import statisticsRoutes from '../modules/statistics/routes/statistics.routes';
 
 const router = Router();
 
@@ -14,5 +15,6 @@ router.use('/categories', categoryRoutes);
 router.use('/expenses', expenseRoutes);
 router.use('/snaps', snapRoutes);
 router.use('/friends', friendshipRoutes);
+router.use('/statistics', statisticsRoutes);
 
 export default router;

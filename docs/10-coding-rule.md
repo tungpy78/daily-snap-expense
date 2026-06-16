@@ -147,6 +147,8 @@ Tuân thủ mô hình phân tầng **Layered Architecture**:
 * **Xử lý khi chạy parallel fail**: Nếu test riêng lẻ pass và `npx jest --runInBand` pass nhưng chạy song song `npm run test` fail, phải ưu tiên kiểm tra vấn đề test isolation và cross-suite pollution (ô nhiễm chéo giữa các suite).
 * **Thiết lập timestamp rõ ràng khi test sort**: Khi test sort theo timestamp, không được dựa vào thứ tự insert hoặc timestamp mặc định nếu DB có thể lưu cùng thời điểm. Hãy set created_at/updated_at rõ ràng và khác nhau cho từng record trong test.
 * **Xử lý giá trị null cho field nullable trong test**: Response JSON nên dùng null cho field nullable không có dữ liệu, ví dụ avatarUrl. Test phải expect null hoặc normalize bằng `value ?? null`, không kỳ vọng undefined.
+* **Không dùng Jest fake timers trong integration tests**: Không dùng Jest fake timers (`jest.useFakeTimers()`) trong integration tests có Express/Supertest/Sequelize, vì có thể làm request hoặc DB query bị treo (gây ra lỗi timeout 5000ms hoặc connection closed). Với API phụ thuộc ngày hiện tại, ưu tiên dùng helper tính toán ngày động dựa trên ngày hiện tại thật của server hoặc tách logic ngày ra để test unit riêng.
+
 
 ### Viết mã kiểm thử sạch
 * **Không khai báo biến thừa**: Không khai báo các biến test không thực sự sử dụng (như `token2`, `user2`, `category2`) trong file spec.
