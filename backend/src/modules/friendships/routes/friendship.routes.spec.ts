@@ -4,6 +4,7 @@ import { Op } from 'sequelize';
 import app from '../../../app';
 import { User } from '../../../shared/models/user.model';
 import { Friendship } from '../../../shared/models/friendship.model';
+import { Snap } from '../../../shared/models/snap.model';
 import sequelize from '../../../shared/database/index';
 import { tokenService } from '../../auth/services/token.service';
 
@@ -32,6 +33,7 @@ describe('Friendship Routes Integration Tests', () => {
 
   const createdFriendshipIds: string[] = [];
   const createdUserIds: string[] = [];
+  const createdSnapIds: string[] = [];
 
   beforeAll(async () => {
     // Inject mock secrets for integration tests
@@ -86,6 +88,14 @@ describe('Friendship Routes Integration Tests', () => {
 
   afterAll(async () => {
     try {
+      // 0. Cleanup snaps created
+      if (createdSnapIds.length > 0) {
+        await Snap.destroy({
+          where: { id: createdSnapIds },
+          force: true,
+        });
+      }
+
       // 1. Cleanup friendships created
       if (createdFriendshipIds.length > 0) {
         await Friendship.destroy({
@@ -591,6 +601,280 @@ describe('Friendship Routes Integration Tests', () => {
       expect(response.status).toBe(400);
       expect(response.body).toHaveProperty('success', false);
       expect(response.body.error).toHaveProperty('code', 'FRIEND_REQUEST_NOT_PENDING');
+    });
+  });
+
+  describe('GET /api/v1/friends/feed', () => {
+    const createFeedTestUser = async (prefix: string) => {
+      const username = `feed_test_${prefix}_${randomUUID().substring(0, 8)}`;
+      const user = await User.create({
+        username,
+        email: `${username}@example.com`,
+        password_hash: 'hashedpassword',
+      });
+      createdUserIds.push(user.id);
+      return user;
+    };
+    const createTestSnap = async (userId: string, isPrivate: boolean = false, createdAt?: Date) => {
+      const snap = await Snap.create({
+        user_id: userId,
+        image_url: `http://localhost:5001/public/uploads/snaps/image_${randomUUID().substring(0, 8)}.jpg`,
+        caption: 'Caption test feed',
+        is_private: isPrivate,
+        created_at: createdAt,
+      });
+      createdSnapIds.push(snap.id);
+      return snap;
+    };
+
+    it('should return HTTP 401 when Authorization header is missing', async () => {
+      const response = await request(app).get('/api/v1/friends/feed');
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'UNAUTHORIZED');
+    });
+
+    it('should return HTTP 401 when token is invalid', async () => {
+      const response = await request(app)
+        .get('/api/v1/friends/feed')
+        .set('Authorization', 'Bearer invalid.token.value');
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'INVALID_TOKEN');
+    });
+
+    it('should return HTTP 400 when query params are invalid', async () => {
+      const user = await createFeedTestUser('val');
+      const token = tokenService.generateAccessToken({ userId: user.id });
+
+      // Case 1: limit is non-integer
+      const res1 = await request(app)
+        .get('/api/v1/friends/feed?limit=abc')
+        .set('Authorization', `Bearer ${token}`);
+      expect(res1.status).toBe(400);
+      expect(res1.body.error.code).toBe('VALIDATION_ERROR');
+
+      // Case 2: limit = 0
+      const res2 = await request(app)
+        .get('/api/v1/friends/feed?limit=0')
+        .set('Authorization', `Bearer ${token}`);
+      expect(res2.status).toBe(400);
+      expect(res2.body.error.code).toBe('VALIDATION_ERROR');
+
+      // Case 3: limit = -1
+      const res3 = await request(app)
+        .get('/api/v1/friends/feed?limit=-1')
+        .set('Authorization', `Bearer ${token}`);
+      expect(res3.status).toBe(400);
+      expect(res3.body.error.code).toBe('VALIDATION_ERROR');
+
+      // Case 4: limit = 101
+      const res4 = await request(app)
+        .get('/api/v1/friends/feed?limit=101')
+        .set('Authorization', `Bearer ${token}`);
+      expect(res4.status).toBe(400);
+      expect(res4.body.error.code).toBe('VALIDATION_ERROR');
+
+      // Case 5: offset is negative
+      const res5 = await request(app)
+        .get('/api/v1/friends/feed?offset=-1')
+        .set('Authorization', `Bearer ${token}`);
+      expect(res5.status).toBe(400);
+      expect(res5.body.error.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('should return empty feed when user has no friends', async () => {
+      const user = await createFeedTestUser('nofriends');
+      const token = tokenService.generateAccessToken({ userId: user.id });
+
+      const response = await request(app)
+        .get('/api/v1/friends/feed')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body.data.feed).toEqual([]);
+      expect(response.body.data.pagination).toEqual({
+        total: 0,
+        limit: 20,
+        offset: 0,
+      });
+    });
+
+    it('should return empty feed when user has friends but they have no snaps', async () => {
+      const user = await createFeedTestUser('hasfriend');
+      const friend = await createFeedTestUser('friend');
+      const token = tokenService.generateAccessToken({ userId: user.id });
+
+      // Create accepted friendship
+      const friendship = await Friendship.create({
+        sender_id: user.id,
+        receiver_id: friend.id,
+        status: 'accepted',
+      });
+      createdFriendshipIds.push(friendship.id);
+
+      const response = await request(app)
+        .get('/api/v1/friends/feed')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.feed).toEqual([]);
+      expect(response.body.data.pagination.total).toBe(0);
+    });
+
+    it('should only return public snaps and ignore private and soft-deleted snaps', async () => {
+      const user = await createFeedTestUser('filter');
+      const friend = await createFeedTestUser('friend_f');
+      const token = tokenService.generateAccessToken({ userId: user.id });
+
+      const friendship = await Friendship.create({
+        sender_id: user.id,
+        receiver_id: friend.id,
+        status: 'accepted',
+      });
+      createdFriendshipIds.push(friendship.id);
+
+      // Create private snap
+      await createTestSnap(friend.id, true);
+
+      // Create public snap that is soft deleted
+      const deletedSnap = await createTestSnap(friend.id, false);
+      await deletedSnap.destroy(); // Soft delete
+
+      // Create active public snap
+      const publicSnap = await createTestSnap(friend.id, false);
+
+      const response = await request(app)
+        .get('/api/v1/friends/feed')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.feed.length).toBe(1);
+      expect(response.body.data.feed[0].id).toBe(publicSnap.id);
+      expect(response.body.data.feed[0].username).toBe(friend.username);
+      expect(response.body.data.feed[0].avatarUrl).toBe(friend.avatar_url ?? null);
+      expect(response.body.data.feed[0].imageUrl).toBe(publicSnap.image_url);
+      expect(response.body.data.feed[0].caption).toBe(publicSnap.caption);
+      expect(response.body.data.feed[0].reactions).toEqual([]);
+      expect(response.body.data.pagination.total).toBe(1);
+    });
+
+    it('should not return snaps of strangers, pending friendships, or rejected friendships', async () => {
+      const user = await createFeedTestUser('main');
+      const stranger = await createFeedTestUser('stranger');
+      const pendingFriend = await createFeedTestUser('pending');
+      const rejectedFriend = await createFeedTestUser('rejected');
+      const token = tokenService.generateAccessToken({ userId: user.id });
+
+      // Create pending friendship
+      const friendship1 = await Friendship.create({
+        sender_id: user.id,
+        receiver_id: pendingFriend.id,
+        status: 'pending',
+      });
+      createdFriendshipIds.push(friendship1.id);
+
+      // Create rejected friendship
+      const friendship2 = await Friendship.create({
+        sender_id: user.id,
+        receiver_id: rejectedFriend.id,
+        status: 'rejected',
+      });
+      createdFriendshipIds.push(friendship2.id);
+
+      // Create public snaps for all
+      await createTestSnap(stranger.id, false);
+      await createTestSnap(pendingFriend.id, false);
+      await createTestSnap(rejectedFriend.id, false);
+
+      const response = await request(app)
+        .get('/api/v1/friends/feed')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.feed).toEqual([]);
+      expect(response.body.data.pagination.total).toBe(0);
+    });
+
+    it('should not include the user own snaps in their feed', async () => {
+      const user = await createFeedTestUser('me');
+      const token = tokenService.generateAccessToken({ userId: user.id });
+
+      // Create a public snap for myself
+      await createTestSnap(user.id, false);
+
+      const response = await request(app)
+        .get('/api/v1/friends/feed')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.feed).toEqual([]);
+      expect(response.body.data.pagination.total).toBe(0);
+    });
+
+    it('should return snaps in descending order of creation and support pagination', async () => {
+      const user = await createFeedTestUser('order');
+      const friend = await createFeedTestUser('friend_o');
+      const token = tokenService.generateAccessToken({ userId: user.id });
+
+      const friendship = await Friendship.create({
+        sender_id: user.id,
+        receiver_id: friend.id,
+        status: 'accepted',
+      });
+      createdFriendshipIds.push(friendship.id);
+      // Create snaps with explicit distinct timestamps
+      const baseTime = new Date();
+      const snap1 = await createTestSnap(friend.id, false, new Date(baseTime.getTime() - 30000));
+      const snap2 = await createTestSnap(friend.id, false, new Date(baseTime.getTime() - 20000));
+      const snap3 = await createTestSnap(friend.id, false, new Date(baseTime.getTime() - 10000));
+
+      // Fetch with limit = 2
+      const res1 = await request(app)
+        .get('/api/v1/friends/feed?limit=2')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res1.status).toBe(200);
+      expect(res1.body.data.feed.length).toBe(2);
+      expect(res1.body.data.feed[0].id).toBe(snap3.id);
+      expect(res1.body.data.feed[1].id).toBe(snap2.id);
+      expect(res1.body.data.pagination.total).toBe(3);
+
+      // Fetch with limit = 2, offset = 2
+      const res2 = await request(app)
+        .get('/api/v1/friends/feed?limit=2&offset=2')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res2.status).toBe(200);
+      expect(res2.body.data.feed.length).toBe(1);
+      expect(res2.body.data.feed[0].id).toBe(snap1.id);
+      expect(res2.body.data.pagination.total).toBe(3);
+    });
+
+    it('should retrieve snaps when friendship accepted direction is reversed', async () => {
+      const user = await createFeedTestUser('receiver');
+      const friend = await createFeedTestUser('sender');
+      const token = tokenService.generateAccessToken({ userId: user.id });
+
+      // Friend sent request, user accepted -> Friendship has sender_id = friend, receiver_id = user
+      const friendship = await Friendship.create({
+        sender_id: friend.id,
+        receiver_id: user.id,
+        status: 'accepted',
+      });
+      createdFriendshipIds.push(friendship.id);
+
+      const publicSnap = await createTestSnap(friend.id, false);
+
+      const response = await request(app)
+        .get('/api/v1/friends/feed')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.feed.length).toBe(1);
+      expect(response.body.data.feed[0].id).toBe(publicSnap.id);
+      expect(response.body.data.pagination.total).toBe(1);
     });
   });
 });

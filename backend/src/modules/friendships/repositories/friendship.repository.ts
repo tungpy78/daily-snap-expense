@@ -117,4 +117,27 @@ export class FriendshipRepository {
       },
     );
   }
+
+  /**
+   * Finds user IDs of all accepted friends for the given user ID.
+   */
+  public static async findAcceptedFriendUserIds(
+    userId: string,
+    transaction?: Transaction,
+  ): Promise<string[]> {
+    const friendships = await Friendship.findAll({
+      where: {
+        status: 'accepted',
+        [Op.or]: [{ sender_id: userId }, { receiver_id: userId }],
+      },
+      attributes: ['sender_id', 'receiver_id'],
+      transaction,
+    });
+
+    const friendIds = friendships.map((f) =>
+      f.sender_id === userId ? f.receiver_id : f.sender_id,
+    );
+
+    return Array.from(new Set(friendIds));
+  }
 }

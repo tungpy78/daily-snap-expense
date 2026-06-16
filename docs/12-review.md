@@ -3414,6 +3414,161 @@ npm run test: 12 suites passed, 241 tests passed
 build: pass
 ```
 
+---
+
+## Review: T-8.4 - API Lấy dòng thời gian bạn bè (GET /api/v1/friends/feed)
+
+### Date
+2026-06-16
+
+### Tóm tắt triển khai
+Đã triển khai endpoint:
+`GET /api/v1/friends/feed`
+
+Route protected:
+`authMiddleware`
+
+Route flow:
+`Route -> authMiddleware -> validateRequest(friendFeedQuerySchema) -> FriendshipController.getFriendFeed -> FriendshipService.getFriendFeed -> FriendshipRepository/SnapRepository -> Model/Database`
+
+Các file chính đã cập nhật:
+- `src/modules/friendships/dtos/friendship.dto.ts`
+- `src/modules/friendships/validators/friendship.validator.ts`
+- `src/modules/friendships/repositories/friendship.repository.ts`
+- `src/modules/friendships/services/friendship.service.ts`
+- `src/modules/friendships/controllers/friendship.controller.ts`
+- `src/modules/friendships/routes/friendship.routes.ts`
+- `src/modules/friendships/routes/friendship.routes.spec.ts`
+- `src/modules/snaps/repositories/snap.repository.ts`
+- `src/shared/models/snap.model.ts`
+
+Không tạo migration mới.
+Không sửa migration cũ.
+Không sửa `.env`.
+Không sửa `app.ts`.
+
+### API behavior
+Endpoint:
+`GET /api/v1/friends/feed`
+
+Query params:
+- `limit` (optional, default 20, min 1, max 100)
+- `offset` (optional, default 0, min 0)
+
+Success response:
+```json
+{
+  "success": true,
+  "data": {
+    "feed": [
+      {
+        "id": "friend-snap-uuid",
+        "username": "vietanh",
+        "avatarUrl": null,
+        "imageUrl": "http://localhost:5001/public/uploads/snaps/snap.jpg",
+        "caption": "Món phở sáng nay cùng bạn bè",
+        "createdAt": "2026-06-13T08:15:00.000Z",
+        "reactions": []
+      }
+    ],
+    "pagination": {
+      "total": 1,
+      "limit": 20,
+      "offset": 0
+    }
+  }
+}
+```
+
+Ghi rõ:
+- `reactions: []` tạm thời luôn là mảng rỗng vì Reaction thuộc Milestone 9.
+
+Error cases:
+- `401 UNAUTHORIZED` nếu thiếu token
+- `401 INVALID_TOKEN` nếu token sai
+- `400 VALIDATION_ERROR` nếu limit/offset không hợp lệ
+
+### Business logic
+Được triển khai trong `FriendshipService.getFriendFeed`:
+1. Lấy danh sách friendIds từ friendships có status accepted ở cả hai chiều.
+2. Nếu không có friendIds -> trả feed `[]` và pagination total 0.
+3. Gọi `SnapRepository.findFeedByFriendIds(friendIds, limit, offset)`.
+4. Chỉ lấy snaps của bạn bè, không lấy snap của chính current user.
+5. Chỉ lấy public snaps: `is_private = false`.
+6. Không lấy soft-deleted snaps.
+7. Sort theo `created_at DESC`.
+8. Map kết quả sang DTO an toàn gồm id, username, avatarUrl, imageUrl, caption, createdAt, reactions `[]`.
+9. Trả pagination gồm total, limit, offset.
+
+### Repository / Model
+- `FriendshipRepository` bổ sung `findAcceptedFriendUserIds(userId)`. Method này tìm accepted friendships mà user là sender hoặc receiver, sau đó map ra ID phía còn lại.
+- `SnapRepository` bổ sung `findFeedByFriendIds(friendIds, limit, offset)`. Method này trả `{ rows, count }`, hỗ trợ pagination.
+- `SnapRepository` eager-load `User` để lấy username và avatar. Không trả `password_hash` hoặc dữ liệu nhạy cảm.
+- `Snap` model bổ sung `NonAttribute user` type để đảm bảo type safety khi eager loading.
+- Service không gọi Sequelize model trực tiếp.
+
+### Test cases
+Đã bổ sung integration tests cho `GET /api/v1/friends/feed`, bao phủ:
+1. Không gửi token -> 401.
+2. Token invalid -> 401.
+3. limit không phải số nguyên -> 400 VALIDATION_ERROR.
+4. limit = 0 hoặc âm -> 400 VALIDATION_ERROR.
+5. limit > 100 -> 400 VALIDATION_ERROR.
+6. offset không phải số nguyên -> 400 VALIDATION_ERROR.
+7. offset âm -> 400 VALIDATION_ERROR.
+8. User chưa có bạn bè -> feed `[]`.
+9. User có bạn bè accepted nhưng bạn bè chưa có snap -> feed `[]`.
+10. Friend có private snap -> không xuất hiện.
+11. Friend có soft-deleted snap -> không xuất hiện.
+12. Friend có public active snap -> xuất hiện đúng DTO.
+13. Snap của người lạ không kết bạn -> không xuất hiện.
+14. Snap của pending friendship -> không xuất hiện.
+15. Snap của rejected friendship -> không xuất hiện.
+16. Snap của chính current user -> không xuất hiện.
+17. Feed sort `created_at DESC`.
+18. Pagination limit/offset hoạt động đúng.
+19. Accepted friendship chiều currentUser là sender -> lấy snap của receiver.
+20. Accepted friendship chiều currentUser là receiver -> lấy snap của sender.
+
+Tổng friendship route tests hiện tại:
+`37 tests passed`
+
+### Test isolation
+Mã kiểm thử tuân thủ:
+- Dùng randomUUID/shortId cho username/email.
+- Không dùng fixed email/username generic.
+- Mỗi test feed dùng isolated users/friendships/snaps riêng hoặc cleanup theo ID.
+- Không tái sử dụng cùng cặp sender_id/receiver_id cho nhiều test tạo friendship mới.
+- Cleanup theo IDs do suite tạo.
+- Không cleanup toàn bảng.
+- Cleanup đúng thứ tự: snaps -> friendships -> users.
+- Không dùng any/as any.
+- Không dùng eslint-disable.
+- Không khai báo token/user/snap/friendship nếu không dùng thật.
+
+### Lỗi đã gặp và cách khắc phục
+1. Test fail avatarUrl null/undefined:
+   - Lỗi: API trả avatarUrl null nhưng test expect undefined từ `friend.avatar_url`.
+   - Cách sửa: normalize expectation bằng `friend.avatar_url ?? null`.
+   - Không sửa service để trả undefined.
+2. Test sort/pagination fail do created_at có thể trùng thời điểm:
+   - Lỗi: test kỳ vọng snap3 -> snap2 -> snap1 nhưng DB trả thứ tự khác vì timestamps có thể quá sát nhau.
+   - Nguyên nhân: `ORDER BY created_at DESC` không đảm bảo thứ tự nếu nhiều record có cùng timestamp.
+   - Cách sửa: trong test pagination, set `created_at`/`updated_at` rõ ràng và khác nhau cho từng snap.
+   - Không dùng setTimeout/sleep, không sort thủ công trong service để né test.
+
+### Kết quả nghiệm thu
+```txt
+friendship routes test riêng: 1 suite passed, 37 tests passed
+full jest runInBand: 12 suites passed, 251 tests passed
+format: pass
+format:check: pass
+lint: pass, không warning no-explicit-any hoặc unused variable
+npm run test: 12 suites passed, 251 tests passed
+build: pass
+```
+
+
 
 
 

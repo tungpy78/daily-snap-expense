@@ -145,6 +145,8 @@ Tuân thủ mô hình phân tầng **Layered Architecture**:
 * **Tránh trùng lặp cặp khóa unique trong test**: Với bảng có unique constraint theo cặp khóa như `(sender_id, receiver_id)`, integration test không được tái sử dụng cùng một cặp entity cho nhiều test tạo record mới. Hãy tạo isolated entity pairs cho từng test case hoặc cleanup đúng ID trước khi tạo lại.
 * **Không xóa toàn bộ thư mục upload**: Không thực hiện xóa trắng thư mục upload trong quá trình test; chỉ xóa các file ảnh cụ thể do chính test suite đó sinh ra.
 * **Xử lý khi chạy parallel fail**: Nếu test riêng lẻ pass và `npx jest --runInBand` pass nhưng chạy song song `npm run test` fail, phải ưu tiên kiểm tra vấn đề test isolation và cross-suite pollution (ô nhiễm chéo giữa các suite).
+* **Thiết lập timestamp rõ ràng khi test sort**: Khi test sort theo timestamp, không được dựa vào thứ tự insert hoặc timestamp mặc định nếu DB có thể lưu cùng thời điểm. Hãy set created_at/updated_at rõ ràng và khác nhau cho từng record trong test.
+* **Xử lý giá trị null cho field nullable trong test**: Response JSON nên dùng null cho field nullable không có dữ liệu, ví dụ avatarUrl. Test phải expect null hoặc normalize bằng `value ?? null`, không kỳ vọng undefined.
 
 ### Viết mã kiểm thử sạch
 * **Không khai báo biến thừa**: Không khai báo các biến test không thực sự sử dụng (như `token2`, `user2`, `category2`) trong file spec.

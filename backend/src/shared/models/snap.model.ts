@@ -29,6 +29,7 @@ export class Snap extends Model<SnapAttributes, SnapCreationAttributes> implemen
   declare readonly updated_at?: Date;
   declare readonly deleted_at?: Date | null;
   declare expenses?: NonAttribute<Expense[]>;
+  declare user?: NonAttribute<User>;
 }
 
 Snap.init(

@@ -1,10 +1,13 @@
 import sequelize from '../../../shared/database/index';
 import { FriendshipRepository } from '../repositories/friendship.repository';
+import { SnapRepository } from '../../snaps/repositories/snap.repository';
 import type {
   SendFriendRequestDto,
   SendFriendRequestResponseDto,
   RespondFriendRequestDto,
   RespondFriendRequestResponseDto,
+  FriendFeedQueryDto,
+  FriendFeedResponseDto,
 } from '../dtos/friendship.dto';
 import { AppError } from '../../../shared/utils/appError';
 
@@ -162,5 +165,53 @@ export class FriendshipService {
       await transaction.rollback();
       throw error;
     }
+  }
+
+  /**
+   * Retrieves the feed of public snaps from accepted friends.
+   */
+  public static async getFriendFeed(
+    userId: string,
+    query: FriendFeedQueryDto,
+  ): Promise<FriendFeedResponseDto> {
+    const friendIds = await FriendshipRepository.findAcceptedFriendUserIds(userId);
+
+    if (friendIds.length === 0) {
+      return {
+        feed: [],
+        pagination: {
+          total: 0,
+          limit: query.limit,
+          offset: query.offset,
+        },
+      };
+    }
+
+    const { rows: snaps, count: total } = await SnapRepository.findFeedByFriendIds(
+      friendIds,
+      query.limit,
+      query.offset,
+    );
+
+    const feedItems = snaps.map((snap) => {
+      return {
+        id: snap.id,
+        username: snap.user?.username ?? '',
+        avatarUrl: snap.user?.avatar_url ?? null,
+        imageUrl: snap.image_url,
+        caption: snap.caption,
+        createdAt: snap.created_at ? snap.created_at.toISOString() : new Date().toISOString(),
+        reactions: [] as [],
+      };
+    });
+
+    return {
+      feed: feedItems,
+      pagination: {
+        total,
+        limit: query.limit,
+        offset: query.offset,
+      },
+    };
   }
 }

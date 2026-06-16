@@ -287,7 +287,7 @@
     *   **Module ảnh hưởng**: Friendship Module, Snap Module
     *   **Test**: Kiểm tra Feed hiển thị đúng các snap public của bạn bè, không hiển thị snap private của họ, và không hiển thị snap của người lạ.
     *   **Dependency**: T-8.3, T-7.4
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 
 ---
 

@@ -2,6 +2,7 @@ import { Op } from 'sequelize';
 import { Snap } from '../../../shared/models/snap.model';
 import { Expense } from '../../../shared/models/expense.model';
 import { Category } from '../../../shared/models/category.model';
+import { User } from '../../../shared/models/user.model';
 import type { CreateSnapData, TimelineQueryDto } from '../dtos/snap.dto';
 import type { Transaction, WhereOptions } from 'sequelize';
 
@@ -90,6 +91,44 @@ export class SnapRepository {
   public static async deleteById(id: string): Promise<number> {
     return Snap.destroy({
       where: { id },
+    });
+  }
+
+  /**
+   * Finds and counts snaps for a list of friend user IDs where snaps are public,
+   * including the owner user's details.
+   */
+  public static async findFeedByFriendIds(
+    friendIds: string[],
+    limit: number,
+    offset: number,
+    transaction?: Transaction,
+  ): Promise<{ rows: Snap[]; count: number }> {
+    if (friendIds.length === 0) {
+      return { rows: [], count: 0 };
+    }
+
+    return Snap.findAndCountAll({
+      where: {
+        user_id: {
+          [Op.in]: friendIds,
+        },
+        is_private: false,
+      },
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['username', 'avatar_url'],
+        },
+      ],
+      order: [
+        ['created_at', 'DESC'],
+        ['id', 'DESC'],
+      ],
+      limit,
+      offset,
+      transaction,
     });
   }
 }

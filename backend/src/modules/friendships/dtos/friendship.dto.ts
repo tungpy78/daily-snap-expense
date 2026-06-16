@@ -17,3 +17,27 @@ export interface RespondFriendRequestDto {
 export interface RespondFriendRequestResponseDto {
   message: string;
 }
+
+export interface FriendFeedQueryDto {
+  limit: number;
+  offset: number;
+}
+
+export interface FriendFeedItemDto {
+  id: string;
+  username: string;
+  avatarUrl: string | null;
+  imageUrl: string;
+  caption: string | null;
+  createdAt: string;
+  reactions: [];
+}
+
+export interface FriendFeedResponseDto {
+  feed: FriendFeedItemDto[];
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+  };
+}

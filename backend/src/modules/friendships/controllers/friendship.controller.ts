@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { FriendshipService } from '../services/friendship.service';
 import { AppError } from '../../../shared/utils/appError';
+import type { FriendFeedQueryDto } from '../dtos/friendship.dto';
 
 export class FriendshipController {
   /**
@@ -48,6 +49,32 @@ export class FriendshipController {
         friendshipId,
         req.body,
       );
+
+      res.status(200).json({
+        success: true,
+        data: responseData,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Controller action for GET /api/v1/friends/feed.
+   */
+  public static async getFriendFeed(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    try {
+      if (!req.user || !req.user.id) {
+        throw new AppError('Bạn chưa xác thực. Vui lòng đăng nhập.', 401, 'UNAUTHORIZED');
+      }
+
+      const userId = req.user.id;
+      const query = req.query as unknown as FriendFeedQueryDto;
+      const responseData = await FriendshipService.getFriendFeed(userId, query);
 
       res.status(200).json({
         success: true,
