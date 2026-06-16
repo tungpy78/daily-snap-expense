@@ -316,7 +316,7 @@
     *   **Module ảnh hưởng**: Statistics Module (Services)
     *   **Test**: Unit test với dữ liệu giả lập, kiểm tra tổng tiền và phần trăm tính toán chính xác.
     *   **Dependency**: T-6.3
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-10.2**: API lấy tóm tắt thống kê tài chính (`GET /api/v1/statistics`)
     *   **Mục tiêu**: Trả về dữ liệu thống kê tổng hợp dạng JSON cho client vẽ biểu đồ.
     *   **Mô tả**: Route & Controller gọi dịch vụ thống kê và trả về response chuẩn.

@@ -3780,6 +3780,150 @@ npm run test: 13 suites passed, 267 tests passed
 build: pass
 ```
 
+---
+
+## Review: T-10.1 - Phát triển logic truy vấn thống kê dữ liệu tài chính
+
+### Date
+2026-06-16
+
+### Tóm tắt triển khai
+Đã triển khai module statistics ở tầng DTO, Repository và Service để phục vụ API thống kê ở task sau.
+Các file tạo mới:
+- `backend/src/modules/statistics/dtos/statistics.dto.ts`
+- `backend/src/modules/statistics/repositories/statistics.repository.ts`
+- `backend/src/modules/statistics/services/statistics.service.ts`
+- `backend/src/modules/statistics/services/statistics.service.spec.ts`
+
+Không tạo API endpoint.
+Không tạo route.
+Không tạo controller.
+Không tạo validator.
+Không tạo migration.
+Không sửa `.env`.
+Không sửa `app.ts`.
+
+### Output service
+Đã tạo service method:
+```ts
+getStatisticsSummary(
+  userId: string,
+  queryDate: string,
+  targetYear: number,
+  targetMonth: number,
+): Promise<StatisticsSummaryDto>
+```
+Trong đó:
+- `queryDate`: YYYY-MM-DD, dùng để tính dailyTotal và recentTrend
+- `targetYear`: năm thống kê tháng
+- `targetMonth`: tháng thống kê, dạng 1-12
+
+DTO trả về:
+```ts
+export interface StatisticsSummaryDto {
+  dailyTotal: number;
+  monthlyTotal: number;
+  categoryBreakdown: Array<{
+    categoryId: string;
+    categoryName: string;
+    totalAmount: number;
+    percentage: number;
+  }>;
+  recentTrend: Array<{
+    date: string;
+    total: number;
+  }>;
+}
+```
+
+### Repository behavior
+Ghi nhận `StatisticsRepository` xử lý truy vấn aggregate qua Sequelize:
+- `getDailyTotal`: tổng chi tiêu theo ngày.
+- `getMonthlyTotal`: tổng chi tiêu theo tháng/năm.
+- `getCategoryBreakdown`: tổng chi tiêu theo category trong tháng/năm.
+- `getRecentTrend`: tổng chi tiêu theo ngày trong khoảng 7 ngày gần nhất.
+
+Quy tắc query:
+- Chỉ lấy expenses của đúng user_id.
+- Loại bỏ expenses đã soft-delete.
+- Không tính expense của user khác.
+- Không tính expense ngoài ngày/tháng/năm yêu cầu.
+- Với DECIMAL aggregate từ MySQL/Sequelize, convert an toàn sang number.
+
+### Business logic
+Ghi nhận `StatisticsService` xử lý:
+1. Gọi repository lấy dailyTotal.
+2. Gọi repository lấy monthlyTotal.
+3. Gọi repository lấy category breakdown thô.
+4. Tính percentage = totalAmount / monthlyTotal * 100.
+5. Làm tròn percentage 2 chữ số thập phân.
+6. Tránh chia cho 0 khi monthlyTotal = 0.
+7. Gọi repository lấy recent trend thô.
+8. Fill đủ 7 ngày từ queryDate - 6 ngày đến queryDate.
+9. Ngày không có chi tiêu thì total = 0.
+10. Sort recentTrend theo date tăng dần.
+11. Trả DTO cuối cùng.
+
+### Quy tắc tính toán
+- **Daily total**:
+  - `user_id = userId`
+  - `date = queryDate`
+  - `deleted_at IS NULL`
+- **Monthly total**:
+  - `targetYear + targetMonth`
+  - `deleted_at IS NULL`
+- **Category breakdown**:
+  - Tính trong tháng/năm chỉ định.
+  - Group theo category.
+  - `categoryName` lấy từ Category model hiện tại.
+  - `percentage` làm tròn 2 chữ số thập phân.
+  - `monthlyTotal = 0` thì `categoryBreakdown = []` hoặc `percentage = 0` nếu có dữ liệu thô.
+  - Sort theo `totalAmount DESC` để kết quả ổn định.
+- **Recent trend**:
+  - Gồm đúng 7 ngày.
+  - Từ `queryDate - 6 ngày` đến `queryDate`.
+  - Sort `date` tăng dần.
+  - Ngày không phát sinh chi tiêu có `total = 0`.
+
+### Test cases
+Ghi nhận đã bổ sung test cho `StatisticsService` chạy trên DB kiểm thử, bao phủ các nhóm hành vi:
+1. Tính `dailyTotal` đúng theo `queryDate`.
+2. Tính `monthlyTotal` đúng theo `targetYear + targetMonth`.
+3. Tính `categoryBreakdown` đúng theo category, `totalAmount`, `percentage` và thứ tự.
+4. Xử lý `monthlyTotal = 0` an toàn.
+5. Tạo `recentTrend` đủ 7 ngày, sort tăng dần, fill ngày không có chi tiêu bằng 0.
+6. Loại bỏ soft-deleted expenses khỏi mọi chỉ số.
+7. Đảm bảo expense của user khác không ảnh hưởng thống kê của current user.
+
+Số lượng test hiện tại:
+- `statistics service test riêng: 1 suite passed, 4 tests passed`
+
+Và tổng test toàn dự án hiện tại:
+- `14 suites passed, 271 tests passed`
+
+### Test isolation
+Mã kiểm thử tuân thủ:
+- Dùng dữ liệu test riêng.
+- Không cleanup toàn bảng.
+- Cleanup theo ID.
+- Cleanup đúng thứ tự nếu có FK: `expenses -> categories custom nếu tạo -> users`.
+- Không xóa default/system category nếu chỉ tái sử dụng.
+- Không dùng `any`/`as any`.
+- Không dùng `eslint-disable`.
+- Mọi `if/else` dùng block `{}` đầy đủ.
+
+### Kết quả nghiệm thu
+```txt
+statistics service test riêng: 1 suite passed, 4 tests passed
+full jest runInBand: 14 suites passed, 271 tests passed
+format: pass
+format:check: pass
+lint: pass, không warning no-explicit-any hoặc unused variable
+npm run test: 14 suites passed, 271 tests passed
+build: pass
+```
+
+
 
 
 
