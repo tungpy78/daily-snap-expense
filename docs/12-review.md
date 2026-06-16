@@ -4758,13 +4758,164 @@ Kết quả:
 - Metro pass và hoạt động ổn định.
 - Expo Go pass kết nối và hiển thị đúng đắn với backend thật qua LAN.
 
+### Performance Review
+- Query: N/A
+- Pagination: N/A
+- File handling: N/A
+
+### Test Review
+- Unit tests: N/A
+- Integration tests: N/A
+- Negative tests: N/A
+
+### Documentation Updated
+- Yes
+- Files: `docs/11-task.md`, `docs/12-review.md`
+
+### Decision
+- Approved (Cấu hình tokens, secure storage, session restoration, auth store và custom api client interceptors hoàn tất).
+
+### Notes
+- Toàn bộ flow đăng nhập/đăng ký thật, bắt lỗi backend UI và tự động refresh token khi gặp 401 đã hoạt động ổn định trên Expo Go.
+
+---
+
+## Review: T-13.1 - Màn hình danh sách chi tiêu hàng ngày/tháng
+
+### Date
+2026-06-16
+
+### Tóm tắt triển khai
+- Tạo `mobile/src/features/expenses/screens/ExpenseListScreen.tsx`.
+- Tạo `mobile/src/features/expenses/store/useExpenseStore.ts`.
+- Tạo `mobile/src/features/expenses/types/expense.types.ts`.
+- Sửa `mobile/App.tsx` để render `ExpenseListScreen` khi `isAuthenticated = true`.
+- `App.tsx` mount `ExpenseListScreen` tạm thời, chưa phải React Navigation chính thức.
+
+### API đã dùng
+- `GET /expenses`
+- `GET /categories`
+- Query params dùng cho expenses:
+  - `limit`
+  - `offset`
+  - `categoryId`
+
+### Response shape
+- API expenses:
+  - `data.expenses`
+  - `data.pagination.total`
+  - `data.pagination.limit`
+  - `data.pagination.offset`
+- API categories:
+  - `data.categories`
+
+### useExpenseStore
+- **State**:
+  - `expenses`
+  - `categories`
+  - `selectedCategoryId`
+  - `limit`
+  - `offset`
+  - `total`
+  - `hasMore`
+  - `isLoading`
+  - `isLoadingMore`
+  - `isRefreshing`
+  - `isInitializing`
+  - `hasInitialized`
+  - `error`
+- **Actions**:
+  - `fetchInitialData`
+  - `fetchExpenses`
+  - `loadMore`
+  - `refresh`
+  - `fetchCategories`
+  - `setSelectedCategoryId`
+  - `resetExpenseState`
+  - `clearError`
+
+### Chống gọi API trùng
+- `fetchInitialData` có store-level guard bằng `isInitializing` và `hasInitialized` để tránh chạy song song hoặc chạy trùng lặp khi mount screen.
+- `fetchInitialData` chỉ gọi API thật một lần khi screen mount. Các lần gọi lặp sẽ bị skip.
+- `onEndReached` có UI guard (`handleEndReached`) để không gọi `loadMore` khi list rỗng.
+- `loadMore` cũng có store-level guard để tránh gọi trùng khi `isLoading`/`isLoadingMore`/`isRefreshing` hoặc `hasMore = false`.
+- **Logic empty result**: Nếu API trả expenses rỗng và `total = 0`:
+  - `hasMore = false`
+  - `total = 0`
+  - Empty State được hiển thị.
+  - `onEndReached` không gây spam request.
+
+### Group by date
+- `ExpenseListScreen` dùng `SectionList`.
+- Expenses được group theo trường `date` (`YYYY-MM-DD`).
+- Section header hiển thị ngày dạng tiếng Việt, ví dụ: "Hôm nay", "Hôm qua" hoặc `dd/mm/yyyy`.
+
+### Category filter
+- Category filter hiển thị ngang dạng ScrollView.
+- Luôn có tab "Tất cả".
+- Categories được tải từ API `/categories`.
+- Chọn category gọi `setSelectedCategoryId` và reset list từ offset 0.
+- Nếu categories rỗng, UI vẫn hoạt động với tab "Tất cả".
+
+### snapDetails handling
+- `snapDetails` null hoặc undefined thì không render thumbnail.
+- `snapDetails.snapDeleted === true` thì render badge "Ảnh nhật ký đã bị xóa" màu đỏ nhạt.
+- Nếu `snapDetails` có `imageUrl` và không bị xóa thì render thumbnail ảnh kích thước 80x80.
+- Không cố tải ảnh khi `snapDeleted = true`.
+- Không crash khi thiếu `snapDetails` hoặc thiếu trường con.
+
+### Icon/fallback
+- Không cài thêm icon package.
+- Không dùng Ionicons (do chưa cài sẵn trong package.json).
+- Category icon dùng emoji/text fallback an toàn dựa trên tên danh mục (ví dụ: 🍔, 🚗, 🛍️, 🎮, 📚, 🏥, 💸).
+- Fallback mặc định là biểu tượng chi tiêu như 💸.
+
+### UI/UX
+- UI theo phong cách Sleek Dark Mode & Glassmorphism giả lập.
+- Tái sử dụng `theme.ts`, `GlassCard` và `GlassButton`.
+- Có loading state khi đang tải trang đầu.
+- Có empty state đẹp mắt khi chưa có expense.
+- Có error state kèm nút retry.
+- Có footer loading spinner khi đang load more.
+- Có pull-to-refresh mượt mà.
+
+### App.tsx
+- Khi `isAuthenticated = true`, `App.tsx` render `ExpenseListScreen` thay cho Timeline mockup cũ.
+- Khi logout, `resetExpenseState` được gọi để clear dữ liệu expenses/categories và reset `hasInitialized` để sẵn sàng cho lần login tiếp theo.
+- Auth flow onboarding/login/register vẫn giữ nguyên tạm thời.
+- Chưa cấu hình React Navigation.
+
+### Lệnh nghiệm thu
+Ghi nhận đã chạy thành công trên máy thật:
+```bash
+cd "D:\vibe Coding\mobile"
+npx tsc --noEmit
+npm run start -- --clear
+```
+Kết quả:
+- TypeScript pass sạch lỗi.
+- Metro pass.
+- Expo Go pass kết nối và hiển thị đúng đắn với backend thật qua LAN.
+
+### Kết quả test
+- Login đúng vào màn hình `ExpenseListScreen`.
+- `ExpenseListScreen` gọi được API bằng token.
+- Empty State hiển thị đúng khi chưa có expense.
+- Không spam request khi list rỗng (chỉ chạy `fetchInitialData start` 1 lần, các lần gọi lặp bị skipped).
+- Pull-to-refresh gọi fetch reset một lần theo thao tác người dùng.
+- Logout clear token, reset store và quay về auth flow.
+
 ### Phạm vi chưa làm
 - Chưa cấu hình React Navigation chính thức.
-- Chưa tạo TimelineScreen thật.
 - Chưa tạo Bottom Tab Navigator.
-- Chưa tạo Auth Stack chính thức.
-- Chưa xử lý profile/avatar UI thật.
-```
+- Chưa tạo form thêm/sửa/xóa expense.
+- Chưa tạo Snap detail screen.
+- Chưa tạo Category management screen.
+- Chưa có dữ liệu thật để nghiệm thu đầy đủ filter/infinite scroll trên nhiều trang.
+
+### Decision
+- Approved
+
 
 
 

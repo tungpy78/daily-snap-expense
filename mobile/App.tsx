@@ -9,6 +9,7 @@ import { RegisterScreen } from './src/features/auth/screens/RegisterScreen';
 import { GlassCard } from './src/components/GlassCard';
 import { GlassButton } from './src/components/GlassButton';
 import { useAuthStore } from './src/features/auth/store/useAuthStore';
+import { ExpenseListScreen } from './src/features/expenses/screens/ExpenseListScreen';
 
 // LƯU Ý: File App.tsx này hiện tại đóng vai trò là container quản lý trạng thái luồng màn hình tạm thời
 // (onboarding -> login -> register -> timeline mockup) phục vụ việc nghiệm thu T-12.4.
@@ -37,31 +38,7 @@ export default function App() {
   }
 
   if (isAuthenticated) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar style="light" />
-        <View style={styles.container}>
-          <GlassCard style={styles.card}>
-            <Text style={styles.mockTitle}>Timeline Mockup</Text>
-            <Text style={styles.mockBody}>
-              Đăng nhập thành công với tài khoản:{"\n"}
-              <Text style={styles.usernameHighlight}>{user?.username || ''}</Text>
-            </Text>
-            <Text style={styles.mockBody}>
-              Dòng thời gian (Timeline Screen) sẽ được phát triển ở các task sau.
-            </Text>
-            <GlassButton
-              title="Đăng xuất"
-              variant="danger"
-              onPress={async () => {
-                await logout();
-                setCurrentScreen('login');
-              }}
-            />
-          </GlassCard>
-        </View>
-      </SafeAreaView>
-    );
+    return <ExpenseListScreen />;
   }
 
   if (currentScreen === 'onboarding') {

@@ -398,7 +398,7 @@
     *   **Module ảnh hưởng**: Mobile Expense Feature
     *   **Test**: Hiển thị đúng danh sách chi tiêu trả về từ API, cuộn xuống dưới tự động tải thêm dữ liệu (infinite scroll).
     *   **Dependency**: T-11.4, T-12.4
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-13.2**: Form thêm/sửa chi tiêu thủ công
     *   **Mục tiêu**: Nhập liệu chi tiêu nhanh và dễ dàng.
     *   **Mô tả**: Màn hình nhập số tiền lớn ở đỉnh, grid chọn nhanh danh mục bằng icon màu sắc, chọn ngày tháng bằng DatePicker.
