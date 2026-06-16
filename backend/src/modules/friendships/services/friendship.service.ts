@@ -1,6 +1,11 @@
 import sequelize from '../../../shared/database/index';
 import { FriendshipRepository } from '../repositories/friendship.repository';
-import type { SendFriendRequestDto, SendFriendRequestResponseDto } from '../dtos/friendship.dto';
+import type {
+  SendFriendRequestDto,
+  SendFriendRequestResponseDto,
+  RespondFriendRequestDto,
+  RespondFriendRequestResponseDto,
+} from '../dtos/friendship.dto';
 import { AppError } from '../../../shared/utils/appError';
 
 export class FriendshipService {
@@ -104,6 +109,55 @@ export class FriendshipService {
       return {
         message: 'Đã gửi lời mời kết bạn thành công.',
       };
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+  }
+
+  /**
+   * Responds to a pending friend request by updating its status.
+   */
+  public static async respondFriendRequest(
+    currentUserId: string,
+    friendshipId: string,
+    dto: RespondFriendRequestDto,
+  ): Promise<RespondFriendRequestResponseDto> {
+    const { action } = dto;
+
+    const transaction = await sequelize.transaction();
+    try {
+      // 1. Find friendship by ID
+      const friendship = await FriendshipRepository.findById(friendshipId, transaction);
+
+      // 2. If friendship does not exist -> FRIEND_REQUEST_NOT_FOUND 404
+      if (!friendship) {
+        throw new AppError('Không tìm thấy lời mời kết bạn.', 404, 'FRIEND_REQUEST_NOT_FOUND');
+      }
+
+      // 3. If friendship.receiver_id !== currentUserId -> FORBIDDEN 403
+      if (friendship.receiver_id !== currentUserId) {
+        throw new AppError('Bạn không có quyền phản hồi lời mời kết bạn này.', 403, 'FORBIDDEN');
+      }
+
+      // 4. If friendship.status !== 'pending' -> FRIEND_REQUEST_NOT_PENDING 400
+      if (friendship.status !== 'pending') {
+        throw new AppError(
+          'Lời mời kết bạn không còn ở trạng thái chờ.',
+          400,
+          'FRIEND_REQUEST_NOT_PENDING',
+        );
+      }
+
+      // 5-6. Update status based on action
+      const newStatus = action === 'ACCEPT' ? 'accepted' : 'rejected';
+      await FriendshipRepository.updateStatusById(friendshipId, newStatus, transaction);
+
+      await transaction.commit();
+
+      // 7. Return corresponding success message
+      const message = action === 'ACCEPT' ? 'Đã chấp nhận kết bạn.' : 'Đã từ chối kết bạn.';
+      return { message };
     } catch (error) {
       await transaction.rollback();
       throw error;

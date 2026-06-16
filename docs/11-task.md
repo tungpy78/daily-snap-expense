@@ -280,7 +280,7 @@
     *   **Module ảnh hưởng**: Friendship Module
     *   **Test**: Đồng ý kết bạn $\rightarrow$ kiểm tra quan hệ bạn bè được xác lập thành công.
     *   **Dependency**: T-8.2
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-8.4**: API Lấy dòng thời gian bạn bè (`GET /api/v1/friends/feed`)
     *   **Mục tiêu**: Xem các khoảnh khắc được chia sẻ bởi bạn bè.
     *   **Mô tả**: Lấy danh sách snaps chưa bị xóa mềm của những người dùng có trạng thái kết bạn `ACCEPTED` với người dùng hiện tại, có thiết lập `isPrivate = false`.

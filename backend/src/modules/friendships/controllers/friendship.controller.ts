@@ -27,4 +27,34 @@ export class FriendshipController {
       next(error);
     }
   }
+
+  /**
+   * Controller action for PUT /api/v1/friends/request/:id.
+   */
+  public static async respondFriendRequest(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    try {
+      if (!req.user || !req.user.id) {
+        throw new AppError('Bạn chưa xác thực. Vui lòng đăng nhập.', 401, 'UNAUTHORIZED');
+      }
+
+      const currentUserId = req.user.id;
+      const friendshipId = req.params.id;
+      const responseData = await FriendshipService.respondFriendRequest(
+        currentUserId,
+        friendshipId,
+        req.body,
+      );
+
+      res.status(200).json({
+        success: true,
+        data: responseData,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

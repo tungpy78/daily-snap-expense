@@ -3261,6 +3261,159 @@ npm run test: 12 suites passed, 229 tests passed
 build: pass
 ```
 
+---
+
+## Review: T-8.3 - API Phản hồi yêu cầu kết bạn (PUT /api/v1/friends/request/:id)
+
+### Date
+2026-06-16
+
+### Tóm tắt triển khai
+Đã triển khai endpoint:
+`PUT /api/v1/friends/request/:id`
+
+Route protected:
+`authMiddleware`
+
+Route flow:
+`Route -> authMiddleware -> validateRequest(respondFriendRequestSchema) -> FriendshipController.respondFriendRequest -> FriendshipService.respondFriendRequest -> FriendshipRepository -> Model/Database`
+
+Các file chính đã cập nhật:
+- `src/modules/friendships/dtos/friendship.dto.ts`
+- `src/modules/friendships/validators/friendship.validator.ts`
+- `src/modules/friendships/repositories/friendship.repository.ts`
+- `src/modules/friendships/services/friendship.service.ts`
+- `src/modules/friendships/controllers/friendship.controller.ts`
+- `src/modules/friendships/routes/friendship.routes.ts`
+- `src/modules/friendships/routes/friendship.routes.spec.ts`
+
+Không tạo migration mới.
+Không sửa migration cũ.
+Không sửa `.env`.
+Không sửa `app.ts`.
+
+### API behavior
+Endpoint:
+`PUT /api/v1/friends/request/:id`
+
+Params:
+- `id`: UUID của friendship record
+
+Request body:
+```json
+{
+  "action": "ACCEPT"
+}
+```
+
+`action` hỗ trợ:
+- `ACCEPT`
+- `DECLINE`
+
+Mapping:
+- `ACCEPT` -> status `accepted`
+- `DECLINE` -> status `rejected`
+
+Success khi ACCEPT:
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Đã chấp nhận kết bạn."
+  }
+}
+```
+
+Success khi DECLINE:
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Đã từ chối kết bạn."
+  }
+}
+```
+
+Error cases:
+- `400 VALIDATION_ERROR` nếu params.id không phải UUID
+- `400 VALIDATION_ERROR` nếu body.action thiếu/rỗng/sai enum
+- `404 FRIEND_REQUEST_NOT_FOUND` nếu không tìm thấy friendship id
+- `403 FORBIDDEN` nếu user hiện tại không phải receiver_id
+- `400 FRIEND_REQUEST_NOT_PENDING` nếu status không phải pending
+
+### Business logic
+Được triển khai trong `FriendshipService.respondFriendRequest`:
+1. Tìm friendship theo id.
+2. Nếu không tồn tại -> `FRIEND_REQUEST_NOT_FOUND`.
+3. Nếu currentUserId không phải receiver_id -> `FORBIDDEN`.
+4. Nếu status không phải pending -> `FRIEND_REQUEST_NOT_PENDING`.
+5. Nếu action ACCEPT -> update status `accepted`.
+6. Nếu action DECLINE -> update status `rejected`.
+7. Trả message tương ứng.
+
+Ghi rõ:
+- Sender không thể tự phản hồi lời mời do chính mình gửi.
+- User không liên quan không thể phản hồi.
+- Request đã accepted/rejected không thể phản hồi lại.
+- Request action dùng uppercase ACCEPT/DECLINE, DB status dùng lowercase accepted/rejected.
+
+### Repository / DTO / Validator
+- Bổ sung `FriendRequestAction = 'ACCEPT' | 'DECLINE'`.
+- Bổ sung `RespondFriendRequestDto`.
+- Bổ sung `RespondFriendRequestResponseDto`.
+- Bổ sung `respondFriendRequestSchema` validate params.id UUID và body.action enum.
+- Bổ sung repository method tìm friendship theo id.
+- Bổ sung repository method update status theo id hoặc tái sử dụng update status hiện có.
+- Service không gọi Sequelize model trực tiếp.
+
+### Test cases
+Đã bổ sung integration tests cho `PUT /api/v1/friends/request/:id`, bao phủ:
+1. Không gửi token -> 401.
+2. Token invalid -> 401.
+3. params.id không phải UUID -> 400 VALIDATION_ERROR.
+4. body.action thiếu -> 400 VALIDATION_ERROR.
+5. body.action invalid -> 400 VALIDATION_ERROR.
+6. Friendship id không tồn tại -> 404 FRIEND_REQUEST_NOT_FOUND.
+7. Sender cố phản hồi request của chính mình -> 403 FORBIDDEN.
+8. User không liên quan cố phản hồi -> 403 FORBIDDEN.
+9. Receiver ACCEPT thành công -> 200, DB status = accepted.
+10. Receiver DECLINE thành công -> 200, DB status = rejected.
+11. Receiver cố phản hồi request đã accepted -> 400 FRIEND_REQUEST_NOT_PENDING.
+12. Receiver cố phản hồi request đã rejected -> 400 FRIEND_REQUEST_NOT_PENDING.
+
+Tổng friendship route tests hiện tại:
+`27 tests passed`
+
+### Test isolation
+Mã kiểm thử tuân thủ:
+- Dùng randomUUID/shortId cho username/email.
+- Không dùng fixed email/username generic.
+- Cleanup theo IDs do suite tạo.
+- Không cleanup toàn bảng.
+- Cleanup đúng thứ tự: friendships -> users.
+- Không dùng any/as any.
+- Không dùng eslint-disable.
+- Không khai báo token/user/friendship nếu không dùng thật.
+- Các test PUT dùng isolated user pairs để tránh unique constraint (sender_id, receiver_id).
+
+### Lỗi đã gặp và cách khắc phục
+1. Friendship routes test fail do unique constraint:
+   - Lỗi: các test PUT tạo Friendship bằng cùng cặp userA -> userB, trong khi các test POST trước đó đã tạo relationship cùng cặp.
+   - Nguyên nhân: bảng friendships có unique constraint (sender_id, receiver_id).
+   - Cách sửa: cập nhật test PUT sử dụng các cặp user cô lập riêng cho từng test case, tracking user IDs/friendship IDs và cleanup theo ID cụ thể.
+   - Không sửa business logic, không bỏ unique constraint, không cleanup toàn bảng.
+
+### Kết quả nghiệm thu
+```txt
+friendship routes test riêng: 1 suite passed, 27 tests passed
+full jest runInBand: 12 suites passed, 241 tests passed
+format: pass
+format:check: pass
+lint: pass, không có warning no-explicit-any hoặc unused variable
+npm run test: 12 suites passed, 241 tests passed
+build: pass
+```
+
 
 
 

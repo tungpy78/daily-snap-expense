@@ -142,6 +142,7 @@ Tuân thủ mô hình phân tầng **Layered Architecture**:
 * **Sử dụng UUID động**: Test suite mới phải dùng `randomUUID()` để tạo suffix riêng biệt hoặc prefix duy nhất theo từng suite cho tất cả IDs, usernames, emails.
 * **Không dọn dẹp diện rộng (Broad Table Wipes)**: Tuyệt đối không gọi `Model.destroy({ where: {}, force: true })` dọn sạch toàn bộ bảng dữ liệu trong integration test khi Jest chạy parallel (gây ảnh hưởng trực tiếp tới dữ liệu của test suite khác đang chạy song song).
 * **Cleanup có phạm vi (Scoped Cleanup)**: Mọi thao tác dọn dẹp dữ liệu (cleanup) phải giới hạn cụ thể theo danh sách IDs/emails do chính test suite đó tạo ra.
+* **Tránh trùng lặp cặp khóa unique trong test**: Với bảng có unique constraint theo cặp khóa như `(sender_id, receiver_id)`, integration test không được tái sử dụng cùng một cặp entity cho nhiều test tạo record mới. Hãy tạo isolated entity pairs cho từng test case hoặc cleanup đúng ID trước khi tạo lại.
 * **Không xóa toàn bộ thư mục upload**: Không thực hiện xóa trắng thư mục upload trong quá trình test; chỉ xóa các file ảnh cụ thể do chính test suite đó sinh ra.
 * **Xử lý khi chạy parallel fail**: Nếu test riêng lẻ pass và `npx jest --runInBand` pass nhưng chạy song song `npm run test` fail, phải ưu tiên kiểm tra vấn đề test isolation và cross-suite pollution (ô nhiễm chéo giữa các suite).
 

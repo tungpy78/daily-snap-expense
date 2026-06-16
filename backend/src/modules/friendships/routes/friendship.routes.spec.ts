@@ -368,4 +368,229 @@ describe('Friendship Routes Integration Tests', () => {
       expect(friendship!.receiver_id).toBe(userC.id);
     });
   });
+
+  describe('PUT /api/v1/friends/request/:id', () => {
+    // Helper to create a new user for PUT tests to ensure test isolation and avoid duplicate friendships
+    const createPutTestUser = async (prefix: string) => {
+      const username = `put_test_${prefix}_${randomUUID().substring(0, 8)}`;
+      const user = await User.create({
+        username,
+        email: `${username}@example.com`,
+        password_hash: 'hashedpassword',
+      });
+      createdUserIds.push(user.id);
+      return user;
+    };
+
+    it('should return HTTP 401 when Authorization header is missing', async () => {
+      const someId = randomUUID();
+      const response = await request(app)
+        .put(`/api/v1/friends/request/${someId}`)
+        .send({ action: 'ACCEPT' });
+
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'UNAUTHORIZED');
+    });
+
+    it('should return HTTP 401 when token is invalid', async () => {
+      const someId = randomUUID();
+      const response = await request(app)
+        .put(`/api/v1/friends/request/${someId}`)
+        .set('Authorization', 'Bearer invalid.token.value')
+        .send({ action: 'ACCEPT' });
+
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'INVALID_TOKEN');
+    });
+
+    it('should return HTTP 400 when params.id is not a valid UUID', async () => {
+      const response = await request(app)
+        .put('/api/v1/friends/request/not-a-uuid')
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send({ action: 'ACCEPT' });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+
+    it('should return HTTP 400 when body.action is missing', async () => {
+      const someId = randomUUID();
+      const response = await request(app)
+        .put(`/api/v1/friends/request/${someId}`)
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send({});
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+
+    it('should return HTTP 400 when body.action is invalid value', async () => {
+      const someId = randomUUID();
+      const response = await request(app)
+        .put(`/api/v1/friends/request/${someId}`)
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send({ action: 'INVALID_ACTION' });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+
+    it('should return HTTP 404 when friendship request does not exist', async () => {
+      const someId = randomUUID();
+      const response = await request(app)
+        .put(`/api/v1/friends/request/${someId}`)
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send({ action: 'ACCEPT' });
+
+      expect(response.status).toBe(404);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'FRIEND_REQUEST_NOT_FOUND');
+    });
+
+    it('should return HTTP 403 when sender tries to respond to their own request', async () => {
+      const sender = await createPutTestUser('sender1');
+      const receiver = await createPutTestUser('receiver1');
+      const senderToken = tokenService.generateAccessToken({ userId: sender.id });
+
+      const requestRecord = await Friendship.create({
+        sender_id: sender.id,
+        receiver_id: receiver.id,
+        status: 'pending',
+      });
+      createdFriendshipIds.push(requestRecord.id);
+
+      const response = await request(app)
+        .put(`/api/v1/friends/request/${requestRecord.id}`)
+        .set('Authorization', `Bearer ${senderToken}`)
+        .send({ action: 'ACCEPT' });
+
+      expect(response.status).toBe(403);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'FORBIDDEN');
+    });
+
+    it('should return HTTP 403 when user not involved tries to respond', async () => {
+      const sender = await createPutTestUser('sender2');
+      const receiver = await createPutTestUser('receiver2');
+      const outsider = await createPutTestUser('outsider2');
+      const outsiderToken = tokenService.generateAccessToken({ userId: outsider.id });
+
+      const requestRecord = await Friendship.create({
+        sender_id: sender.id,
+        receiver_id: receiver.id,
+        status: 'pending',
+      });
+      createdFriendshipIds.push(requestRecord.id);
+
+      const response = await request(app)
+        .put(`/api/v1/friends/request/${requestRecord.id}`)
+        .set('Authorization', `Bearer ${outsiderToken}`)
+        .send({ action: 'ACCEPT' });
+
+      expect(response.status).toBe(403);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'FORBIDDEN');
+    });
+
+    it('should successfully ACCEPT a pending request', async () => {
+      const sender = await createPutTestUser('sender3');
+      const receiver = await createPutTestUser('receiver3');
+      const receiverToken = tokenService.generateAccessToken({ userId: receiver.id });
+
+      const requestRecord = await Friendship.create({
+        sender_id: sender.id,
+        receiver_id: receiver.id,
+        status: 'pending',
+      });
+      createdFriendshipIds.push(requestRecord.id);
+
+      const response = await request(app)
+        .put(`/api/v1/friends/request/${requestRecord.id}`)
+        .set('Authorization', `Bearer ${receiverToken}`)
+        .send({ action: 'ACCEPT' });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body.data).toHaveProperty('message', 'Đã chấp nhận kết bạn.');
+
+      // Check DB
+      const updated = await Friendship.findByPk(requestRecord.id);
+      expect(updated!.status).toBe('accepted');
+    });
+
+    it('should successfully DECLINE a pending request', async () => {
+      const sender = await createPutTestUser('sender4');
+      const receiver = await createPutTestUser('receiver4');
+      const receiverToken = tokenService.generateAccessToken({ userId: receiver.id });
+
+      const requestRecord = await Friendship.create({
+        sender_id: sender.id,
+        receiver_id: receiver.id,
+        status: 'pending',
+      });
+      createdFriendshipIds.push(requestRecord.id);
+
+      const response = await request(app)
+        .put(`/api/v1/friends/request/${requestRecord.id}`)
+        .set('Authorization', `Bearer ${receiverToken}`)
+        .send({ action: 'DECLINE' });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body.data).toHaveProperty('message', 'Đã từ chối kết bạn.');
+
+      // Check DB
+      const updated = await Friendship.findByPk(requestRecord.id);
+      expect(updated!.status).toBe('rejected');
+    });
+
+    it('should return HTTP 400 when trying to respond to an already accepted request', async () => {
+      const sender = await createPutTestUser('sender5');
+      const receiver = await createPutTestUser('receiver5');
+      const receiverToken = tokenService.generateAccessToken({ userId: receiver.id });
+
+      const requestRecord = await Friendship.create({
+        sender_id: sender.id,
+        receiver_id: receiver.id,
+        status: 'accepted',
+      });
+      createdFriendshipIds.push(requestRecord.id);
+
+      const response = await request(app)
+        .put(`/api/v1/friends/request/${requestRecord.id}`)
+        .set('Authorization', `Bearer ${receiverToken}`)
+        .send({ action: 'ACCEPT' });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'FRIEND_REQUEST_NOT_PENDING');
+    });
+
+    it('should return HTTP 400 when trying to respond to an already rejected request', async () => {
+      const sender = await createPutTestUser('sender6');
+      const receiver = await createPutTestUser('receiver6');
+      const receiverToken = tokenService.generateAccessToken({ userId: receiver.id });
+
+      const requestRecord = await Friendship.create({
+        sender_id: sender.id,
+        receiver_id: receiver.id,
+        status: 'rejected',
+      });
+      createdFriendshipIds.push(requestRecord.id);
+
+      const response = await request(app)
+        .put(`/api/v1/friends/request/${requestRecord.id}`)
+        .set('Authorization', `Bearer ${receiverToken}`)
+        .send({ action: 'DECLINE' });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('code', 'FRIEND_REQUEST_NOT_PENDING');
+    });
+  });
 });

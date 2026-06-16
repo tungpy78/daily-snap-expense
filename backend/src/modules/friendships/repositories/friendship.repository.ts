@@ -93,4 +93,28 @@ export class FriendshipRepository {
       },
     );
   }
+
+  /**
+   * Finds a friendship record by its primary key ID.
+   */
+  public static async findById(id: string, transaction?: Transaction): Promise<Friendship | null> {
+    return Friendship.findByPk(id, { transaction });
+  }
+
+  /**
+   * Updates the status of an existing friendship by its ID.
+   */
+  public static async updateStatusById(
+    id: string,
+    status: FriendshipStatus,
+    transaction?: Transaction,
+  ): Promise<[number]> {
+    return Friendship.update(
+      { status },
+      {
+        where: { id },
+        transaction,
+      },
+    );
+  }
 }
