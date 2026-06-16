@@ -6,24 +6,33 @@ import { theme } from './src/theme/theme';
 import { OnboardingScreen } from './src/features/auth/screens/OnboardingScreen';
 import { LoginScreen } from './src/features/auth/screens/LoginScreen';
 import { RegisterScreen } from './src/features/auth/screens/RegisterScreen';
-import { GlassCard } from './src/components/GlassCard';
-import { GlassButton } from './src/components/GlassButton';
 import { useAuthStore } from './src/features/auth/store/useAuthStore';
 import { ExpenseListScreen } from './src/features/expenses/screens/ExpenseListScreen';
 
-// LƯU Ý: File App.tsx này hiện tại đóng vai trò là container quản lý trạng thái luồng màn hình tạm thời
-// (onboarding -> login -> register -> timeline mockup) phục vụ việc nghiệm thu T-12.4.
-// Luồng điều hướng chính thức sẽ sử dụng React Navigation ở các task sau.
+// LƯU Ý: App.tsx hiện là root container tạm thời để điều phối:
+// - restore auth session
+// - authenticated app screen
+// - auth flow onboarding/login/register
+//
+// React Navigation chính thức sẽ được triển khai ở task sau.
 
-type AppScreen = 'onboarding' | 'login' | 'register' | 'timeline';
+type AppScreen = 'onboarding' | 'login' | 'register';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<AppScreen>('onboarding');
-  const { restoreSession, isAuthenticated, isLoading, user, logout } = useAuthStore();
+  const restoreSession = useAuthStore((state) => {
+    return state.restoreSession;
+  });
+  const isAuthenticated = useAuthStore((state) => {
+    return state.isAuthenticated;
+  });
+  const isLoading = useAuthStore((state) => {
+    return state.isLoading;
+  });
 
   useEffect(() => {
-    restoreSession();
-  }, []);
+    void restoreSession();
+  }, [restoreSession]);
 
   if (isLoading) {
     return (
@@ -46,19 +55,6 @@ export default function App() {
       <OnboardingScreen
         onFinish={() => {
           setCurrentScreen('login');
-        }}
-      />
-    );
-  }
-
-  if (currentScreen === 'login') {
-    return (
-      <LoginScreen
-        onNavigateToRegister={() => {
-          setCurrentScreen('register');
-        }}
-        onNavigateToOnboarding={() => {
-          setCurrentScreen('onboarding');
         }}
       />
     );
@@ -96,28 +92,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: theme.spacing.lg,
-  },
-  card: {
-    width: '100%',
-    alignItems: 'center',
-    padding: theme.spacing.lg,
-  },
-  mockTitle: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.bold,
-    color: theme.colors.textPrimary,
-    marginBottom: theme.spacing.md,
-  },
-  mockBody: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: theme.spacing.lg,
-  },
-  usernameHighlight: {
-    fontWeight: theme.typography.weights.bold,
-    color: theme.colors.primary,
   },
   loadingText: {
     marginTop: theme.spacing.md,

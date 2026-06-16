@@ -207,5 +207,16 @@ Tuân thủ mô hình phân tầng **Layered Architecture**:
 * **Quy trình kiểm thử lỗi:** Phải test cả Login sai credentials và Register trùng username/email trước khi nghiệm thu các task liên quan đến xác thực.
 * **Bảo mật logs:** Không log password/token. Nếu cần debug, chỉ log metadata an toàn như `hasBackendResponse` hoặc `message`.
 
+---
+
+## 11. Quy tắc Mobile App Root và Điều hướng (Mobile App Root & Navigation Rules)
+
+* **Vai trò của App.tsx:** `App.tsx` chỉ nên đóng vai trò root container tạm thời khi chưa có React Navigation chính thức.
+* **Điều phối trạng thái:** `App.tsx` được phép điều phối khôi phục trạng thái đăng nhập (auth restore) và chọn phân nhánh hiển thị chính giữa authenticated (đã đăng nhập) hoặc unauthenticated (chưa đăng nhập).
+* **Tránh tích lũy UI:** Không để `App.tsx` tích lũy UI chi tiết hoặc mã mockup của từng màn hình. Tất cả mã nguồn giao diện màn hình (Screen UI) phải nằm gọn trong thư mục feature screens tương ứng.
+* **Dọn dẹp mã nguồn tạm:** Khi có task thay thế màn hình mockup bằng màn hình thật, bắt buộc phải dọn sạch hoàn toàn các import, style, state, hoặc comment cũ không còn sử dụng trong `App.tsx`.
+* **Giới hạn phạm vi điều hướng:** Tuyệt đối không tự ý tích hợp hoặc cấu hình thêm thư viện React Navigation cho đến khi có task chính thức yêu cầu.
+
+
 
 
