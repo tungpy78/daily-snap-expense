@@ -197,4 +197,15 @@ Tuân thủ mô hình phân tầng **Layered Architecture**:
 ### Quy tắc SafeAreaView
 * **Tuyệt đối không dùng `SafeAreaView` từ `react-native`** trong các màn hình mới. Bắt buộc import từ `react-native-safe-area-context` để tránh cảnh báo deprecated và đảm bảo hoạt động đúng trên cả iOS/Android.
 
+### Quy tắc xử lý lỗi xác thực và API (Auth API Error Handling)
+* **Xử lý lỗi từ Store Action:** Store action gọi API thật phải parse lỗi backend bằng runtime guard type-safe từ `error.response.data.error.message`.
+* **Không nuốt lỗi trong Store:** Store action không được nuốt lỗi. Sau khi set error vào Zustand store, phải throw lại `Error(message)` để screen có thể bắt và hiển thị.
+* **Đồng bộ hiển thị lỗi trên UI:** Màn hình form auth phải render `displayError = generalError || storeError`.
+* **Vị trí hiển thị lỗi:** `generalError` / `storeError` phải được hiển thị rõ trong UI, nằm trong `GlassCard` và gần nút submit.
+* **Thời điểm xóa lỗi (Clear Error):** Chỉ clear `generalError` / `storeError` khi user sửa input hoặc submit lại form mới, không clear ngay sau khi API fail.
+* **Bỏ qua refresh token flow cho Auth API:** Interceptor không được chạy refresh token flow cho `/auth/login`, `/auth/register`, `/auth/refresh`.
+* **Quy trình kiểm thử lỗi:** Phải test cả Login sai credentials và Register trùng username/email trước khi nghiệm thu các task liên quan đến xác thực.
+* **Bảo mật logs:** Không log password/token. Nếu cần debug, chỉ log metadata an toàn như `hasBackendResponse` hoặc `message`.
+
+
 

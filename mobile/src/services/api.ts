@@ -9,7 +9,10 @@ type RetriableRequestConfig = InternalAxiosRequestConfig & {
 interface RefreshResponse {
   success: boolean;
   data: {
-    accessToken: string;
+    tokens: {
+      accessToken: string;
+      refreshToken: string;
+    };
   };
 }
 
@@ -61,6 +64,18 @@ const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue = [];
 };
 
+const isAuthEndpoint = (url?: string): boolean => {
+  if (!url) {
+    return false;
+  }
+  const normalizedUrl = url.toLowerCase();
+  return (
+    normalizedUrl.includes('auth/login') ||
+    normalizedUrl.includes('auth/register') ||
+    normalizedUrl.includes('auth/refresh')
+  );
+};
+
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
     return response;
@@ -73,8 +88,12 @@ apiClient.interceptors.response.use(
 
     const originalRequest = error.config as RetriableRequestConfig;
 
-    // We only intercept 401 errors
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // We only intercept 401 errors for non-auth endpoints
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !isAuthEndpoint(originalRequest.url)
+    ) {
       console.log('[ApiClient] Response 401 encountered, starting token refresh flow...');
       
       if (isRefreshing) {
@@ -106,13 +125,14 @@ apiClient.interceptors.response.use(
           refreshToken,
         });
 
-        const newAccessToken = refreshResponse.data.data.accessToken;
+        const newAccessToken = refreshResponse.data.data.tokens.accessToken;
+        const newRefreshToken = refreshResponse.data.data.tokens.refreshToken;
         console.log('[ApiClient] Token refresh successful, updating tokens');
 
-        // Store the new access token along with the existing refresh token
+        // Store the new access token along with the rotated refresh token
         await tokenStorage.setTokens({
           accessToken: newAccessToken,
-          refreshToken,
+          refreshToken: newRefreshToken,
         });
 
         isRefreshing = false;

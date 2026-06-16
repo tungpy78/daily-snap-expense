@@ -45,7 +45,11 @@ export const tokenStorage = {
       await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken);
       console.log('[TokenStorage] setTokens: success');
     } catch (error) {
-      console.log('[TokenStorage] Error saving tokens');
+      let message = 'Unknown error';
+      if (error instanceof Error) {
+        message = error.message;
+      }
+      console.log(`[TokenStorage] Error saving tokens: ${message}`);
     }
   },
 

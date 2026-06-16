@@ -12,6 +12,7 @@ export interface GlassInputProps {
   keyboardType?: KeyboardTypeOptions;
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   style?: ViewStyle;
+  editable?: boolean;
 }
 
 export const GlassInput: React.FC<GlassInputProps> = ({
@@ -24,6 +25,7 @@ export const GlassInput: React.FC<GlassInputProps> = ({
   keyboardType = 'default',
   autoCapitalize = 'none',
   style,
+  editable = true,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
 
@@ -32,6 +34,7 @@ export const GlassInput: React.FC<GlassInputProps> = ({
       styles.inputContainer,
       isFocused ? styles.inputFocused : null,
       error ? styles.inputError : null,
+      !editable ? styles.inputDisabled : null,
     ];
   };
 
@@ -49,6 +52,7 @@ export const GlassInput: React.FC<GlassInputProps> = ({
           secureTextEntry={secureTextEntry}
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
+          editable={editable}
           onFocus={() => {
             setIsFocused(true);
           }}
@@ -90,6 +94,9 @@ const styles = StyleSheet.create({
   },
   inputError: {
     borderColor: theme.colors.error,
+  },
+  inputDisabled: {
+    opacity: 0.6,
   },
   input: {
     height: '100%',

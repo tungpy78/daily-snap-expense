@@ -14,13 +14,14 @@ import { theme } from '../../../theme/theme';
 import { GlassCard } from '../../../components/GlassCard';
 import { GlassInput } from '../../../components/GlassInput';
 import { GlassButton } from '../../../components/GlassButton';
+import { useAuthStore } from '../store/useAuthStore';
 
 // ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
 
 interface RegisterScreenProps {
-  onRegisterSuccess: () => void;
+  onRegisterSuccess?: () => void;
   onNavigateToLogin: () => void;
 }
 
@@ -81,9 +82,16 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
     confirmPassword: '',
   });
   const [errors, setErrors] = useState<RegisterFormErrors>({});
+  const [generalError, setGeneralError] = useState<string | null>(null);
+
+  const { register, isLoading, error: storeError, clearError } = useAuthStore();
+
+  const displayError = generalError || storeError;
 
   const updateField = (field: keyof RegisterFormState, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+    setGeneralError(null);
+    clearError();
     // Clear lỗi của field ngay khi người dùng bắt đầu sửa
     if (errors[field]) {
       setErrors((prev) => {
@@ -94,8 +102,10 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
     }
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     setErrors({});
+    setGeneralError(null);
+    clearError();
 
     const validation = registerSchema.safeParse(form);
 
@@ -113,8 +123,15 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
       });
       setErrors(fieldErrors);
     } else {
-      // Validate thành công — mock: không gọi API, không lưu token
-      onRegisterSuccess();
+      try {
+        await register(form.username.trim(), form.email.trim(), form.password);
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error && err.message.trim().length > 0
+            ? err.message
+            : 'Đăng ký thất bại. Vui lòng thử lại.';
+        setGeneralError(message);
+      }
     }
   };
 
@@ -148,6 +165,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
               placeholder="Nhập tên đăng nhập..."
               autoCapitalize="none"
               error={errors.username}
+              editable={!isLoading}
             />
 
             <GlassInput
@@ -160,6 +178,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
               autoCapitalize="none"
               keyboardType="email-address"
               error={errors.email}
+              editable={!isLoading}
             />
 
             <GlassInput
@@ -172,6 +191,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
               secureTextEntry={true}
               autoCapitalize="none"
               error={errors.password}
+              editable={!isLoading}
             />
 
             <GlassInput
@@ -184,19 +204,26 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
               secureTextEntry={true}
               autoCapitalize="none"
               error={errors.confirmPassword}
+              editable={!isLoading}
             />
+
+            {displayError ? (
+              <Text style={styles.generalError}>{displayError}</Text>
+            ) : null}
 
             <GlassButton
               title="Đăng ký"
               variant="primary"
               onPress={handleRegister}
               style={styles.registerButton}
+              loading={isLoading}
+              disabled={isLoading}
             />
 
             {/* Link quay lại Đăng nhập */}
             <View style={styles.loginRow}>
               <Text style={styles.loginText}>Đã có tài khoản? </Text>
-              <Pressable onPress={onNavigateToLogin}>
+              <Pressable onPress={onNavigateToLogin} disabled={isLoading}>
                 <Text style={styles.loginLink}>Đăng nhập</Text>
               </Pressable>
             </View>
@@ -253,6 +280,12 @@ const styles = StyleSheet.create({
   registerButton: {
     marginTop: theme.spacing.md,
     width: '100%',
+  },
+  generalError: {
+    color: theme.colors.error,
+    fontSize: theme.typography.sizes.sm,
+    textAlign: 'center',
+    marginBottom: theme.spacing.md,
   },
   loginRow: {
     flexDirection: 'row',

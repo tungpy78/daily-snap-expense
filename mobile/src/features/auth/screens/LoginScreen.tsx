@@ -6,9 +6,10 @@ import { theme } from '../../../theme/theme';
 import { GlassCard } from '../../../components/GlassCard';
 import { GlassInput } from '../../../components/GlassInput';
 import { GlassButton } from '../../../components/GlassButton';
+import { useAuthStore } from '../store/useAuthStore';
 
 interface LoginScreenProps {
-  onLoginSuccess: (username: string) => void;
+  onLoginSuccess?: (username: string) => void;
   onNavigateToRegister: () => void;
   onNavigateToOnboarding: () => void;
 }
@@ -26,10 +27,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const [usernameOrEmail, setUsernameOrEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [generalError, setGeneralError] = useState<string | null>(null);
 
-  const handleLogin = () => {
+  const { login, isLoading, error: storeError, clearError } = useAuthStore();
+
+  const displayError = generalError || storeError;
+
+  const handleLogin = async () => {
     setErrors({});
-    const validation = loginSchema.safeParse({ usernameOrEmail, password });
+    setGeneralError(null);
+    clearError();
+    const validation = loginSchema.safeParse({ usernameOrEmail: usernameOrEmail.trim(), password });
 
     if (!validation.success) {
       const fieldErrors: Record<string, string> = {};
@@ -41,7 +49,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       });
       setErrors(fieldErrors);
     } else {
-      onLoginSuccess(usernameOrEmail);
+      try {
+        await login(usernameOrEmail.trim(), password);
+        // Do not call onLoginSuccess because App.tsx listens to useAuthStore.isAuthenticated
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error && err.message.trim().length > 0
+            ? err.message
+            : 'Đăng nhập thất bại. Vui lòng thử lại.';
+        setGeneralError(message);
+      }
     }
   };
 
@@ -65,6 +82,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               value={usernameOrEmail}
               onChangeText={(text) => {
                 setUsernameOrEmail(text);
+                setGeneralError(null);
+                clearError();
                 if (errors.usernameOrEmail) {
                   setErrors((prev) => {
                     const next = { ...prev };
@@ -76,6 +95,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               placeholder="Nhập username hoặc email..."
               autoCapitalize="none"
               error={errors.usernameOrEmail}
+              editable={!isLoading}
             />
 
             <GlassInput
@@ -83,6 +103,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               value={password}
               onChangeText={(text) => {
                 setPassword(text);
+                setGeneralError(null);
+                clearError();
                 if (errors.password) {
                   setErrors((prev) => {
                     const next = { ...prev };
@@ -95,24 +117,31 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               secureTextEntry={true}
               autoCapitalize="none"
               error={errors.password}
+              editable={!isLoading}
             />
+
+            {displayError ? (
+              <Text style={styles.generalError}>{displayError}</Text>
+            ) : null}
 
             <GlassButton
               title="Đăng nhập"
               variant="primary"
               onPress={handleLogin}
               style={styles.loginButton}
+              loading={isLoading}
+              disabled={isLoading}
             />
 
             <View style={styles.registerRow}>
               <Text style={styles.registerText}>Chưa có tài khoản? </Text>
-              <Pressable onPress={onNavigateToRegister}>
+              <Pressable onPress={onNavigateToRegister} disabled={isLoading}>
                 <Text style={styles.registerLink}>Đăng ký ngay</Text>
               </Pressable>
             </View>
           </GlassCard>
 
-          <Pressable onPress={onNavigateToOnboarding} style={styles.backButton}>
+          <Pressable onPress={onNavigateToOnboarding} style={styles.backButton} disabled={isLoading}>
             <Text style={styles.backButtonText}>← Quay lại Onboarding</Text>
           </Pressable>
         </ScrollView>
@@ -162,6 +191,12 @@ const styles = StyleSheet.create({
   loginButton: {
     marginTop: theme.spacing.md,
     width: '100%',
+  },
+  generalError: {
+    color: theme.colors.error,
+    fontSize: theme.typography.sizes.sm,
+    textAlign: 'center',
+    marginBottom: theme.spacing.md,
   },
   registerRow: {
     flexDirection: 'row',
