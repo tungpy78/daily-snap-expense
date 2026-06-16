@@ -387,7 +387,7 @@
     *   **Module ảnh hưởng**: Mobile Store Module
     *   **Test**: Khởi động lại ứng dụng khi đã đăng nhập trước đó $\rightarrow$ tự động mở thẳng màn hình Timeline, không bắt login lại.
     *   **Dependency**: T-12.2
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 
 ---
 

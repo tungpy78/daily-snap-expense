@@ -4659,6 +4659,111 @@ Kết quả nghiệm thu:
 - Chưa tạo Auth store bằng Zustand.
 - Chưa cấu hình React Navigation chính thức.
 - Chưa tạo TimelineScreen thật.
+
+---
+
+## Review: T-12.4 - Tích hợp Auth Zustand Store và quản lý lưu trữ Token bảo mật
+
+### Date
+2026-06-16
+
+### Tóm tắt triển khai
+- Tạo `mobile/src/features/auth/store/useAuthStore.ts` bằng Zustand làm kho trạng thái toàn cục cho xác thực.
+- Tạo `mobile/src/features/auth/types/auth.types.ts` định nghĩa các kiểu dữ liệu an toàn.
+- Sửa `mobile/src/features/auth/screens/LoginScreen.tsx` để tích hợp API login thật.
+- Sửa `mobile/src/features/auth/screens/RegisterScreen.tsx` để tích hợp API register thật.
+- Sửa `mobile/App.tsx` gọi `restoreSession` lúc khởi động và render trạng thái động dựa trên authentication store.
+- Sửa `mobile/src/services/api.ts` để xử lý refresh token flow và bypass cho auth endpoints.
+- Sửa `mobile/src/services/token.ts` để log lỗi lưu token an toàn.
+- Sửa `mobile/src/components/GlassInput.tsx` để hỗ trợ `editable` prop.
+
+### Auth store
+useAuthStore quản lý các state:
+- `user`: Thông tin cá nhân người dùng (`UserProfile | null`).
+- `accessToken`: Token truy cập hiện tại (`string | null`).
+- `isAuthenticated`: Trạng thái đã xác thực thành công hay chưa (`boolean`).
+- `isLoading`: Trạng thái đang tải dữ liệu API hoặc đang khôi phục phiên (`boolean`).
+- `error`: Lưu trữ thông báo lỗi xác thực gần nhất từ máy chủ (`string | null`).
+
+Actions:
+- `restoreSession`: Khôi phục phiên làm việc khi người dùng mở lại app.
+- `login`: Thực hiện gửi thông tin đăng nhập lên backend.
+- `register`: Đăng ký tài khoản người dùng mới.
+- `logout`: Đăng xuất và dọn dẹp token bảo mật.
+- `clearError`: Xóa bỏ thông tin lỗi xác thực trong store.
+
+### API response shape thực tế
+Backend trả về cấu hình token lồng trong trường `tokens` của `data`:
+- **Login/Register:**
+  - `data.user`
+  - `data.tokens.accessToken`
+  - `data.tokens.refreshToken`
+- **Refresh:**
+  - `data.tokens.accessToken`
+  - `data.tokens.refreshToken`
+- **Profile:**
+  - `data.user`
+
+*Ghi chú lỗi đã sửa:* Ban đầu store đọc nhầm `accessToken`/`refreshToken` trực tiếp từ `data`, trong khi backend trả token trong `data.tokens`. Điều này khiến `SecureStore` nhận `undefined` và báo `Error saving tokens`. Đã sửa bằng cách map đúng `data.tokens` và validate runtime trước khi lưu token.
+
+### Token storage
+- Login/register thành công gọi `tokenStorage.setTokens({ accessToken, refreshToken })`.
+- Logout gọi `tokenStorage.clearTokens()`.
+- `restoreSession` đọc `accessToken`/`refreshToken` từ `SecureStore`.
+- Không log token thật để tránh rò rỉ bảo mật.
+
+### Restore session
+- `App.tsx` gọi `restoreSession` khi khởi động.
+- Nếu không có token (thiếu cả hai) thì return sớm, không gọi profile.
+- Nếu có token thì gọi `GET /users/profile`.
+- Nếu `accessToken` hết hạn, `apiClient` interceptor thử refresh token bằng `refreshToken`.
+- Nếu restore success thì set `isAuthenticated = true`.
+- Nếu restore fail thì clear local token và reset state.
+- Không gọi logout API khi `restoreSession` fail.
+
+### API interceptor
+- Request interceptor gắn `Authorization Bearer` khi có `accessToken`.
+- Response interceptor xử lý `401` cho protected endpoints.
+- Không chạy refresh flow cho:
+  - `/auth/login`
+  - `/auth/register`
+  - `/auth/refresh`
+- Login sai credentials không bị chuyển nhầm sang refresh token flow.
+
+### Error handling
+- Thêm `ApiErrorBody` type.
+- `extractApiErrorMessage` dùng runtime guard type-safe để kiểm tra kiểu và cấu trúc.
+- Đọc lỗi backend từ `error.response.data.error.message`.
+- Store action set error và throw lại `Error(message)`.
+- `LoginScreen`/`RegisterScreen` render `displayError = generalError || storeError`.
+- Lỗi API hiển thị màu đỏ trong `GlassCard` gần nút submit.
+- Không dùng `any`/`as any`/`eslint-disable`.
+
+### UI behavior
+- Login sai mật khẩu hiển thị: *"Email/Tên đăng nhập hoặc mật khẩu không chính xác."*
+- Register trùng username/email hiển thị lỗi backend.
+- Login/register đúng chuyển vào Timeline mockup.
+- Logout quay lại auth flow.
+- App có loading/splash khi `restoreSession` đang chạy.
+
+### Lệnh nghiệm thu
+Ghi nhận lệnh đã chạy thành công:
+```bash
+cd "D:\vibe Coding\mobile"
+npx tsc --noEmit
+npm run start -- --clear
+```
+Kết quả:
+- TypeScript pass sạch lỗi.
+- Metro pass và hoạt động ổn định.
+- Expo Go pass kết nối và hiển thị đúng đắn với backend thật qua LAN.
+
+### Phạm vi chưa làm
+- Chưa cấu hình React Navigation chính thức.
+- Chưa tạo TimelineScreen thật.
+- Chưa tạo Bottom Tab Navigator.
+- Chưa tạo Auth Stack chính thức.
+- Chưa xử lý profile/avatar UI thật.
 ```
 
 
