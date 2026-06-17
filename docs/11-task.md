@@ -431,21 +431,28 @@
     *   **Test**: Nhập caption, chọn đính kèm 2 khoản chi tiêu $\rightarrow$ nhấn Lưu $\rightarrow$ Hệ thống gửi đúng định dạng payload multipart/form-data lên Backend.
     *   **Dependency**: T-14.1, T-13.2
     *   **Trạng thái**: Done
-*   **T-14.2.5**: Cấu hình React Navigation và flow chính thức cho Mobile
-    *   **Mục tiêu**: Thay thế cơ chế điều phối màn hình tạm trong `App.tsx` bằng hệ thống điều hướng chính thức, chuẩn bị nền tảng cho Timeline, Camera, Expense, Statistics, Friends và Profile.
-    *   **Mô tả**: Tạo `NavigationContainer`, `RootNavigator`, `AuthStack` và `AppTabs` hoặc `AppStack` phù hợp. Di chuyển flow Onboarding/Login/Register vào AuthStack. Di chuyển các màn authenticated như Timeline placeholder, ExpenseListScreen, CameraScreen vào App navigation. Xóa nút test camera tạm và state chuyển màn hình tạm trong App.tsx. App.tsx chỉ còn root providers và navigator.
+*   **T-14.2.5**: Cấu hình React Navigation và Camera-first App Shell
+    *   **Mục tiêu**: Thay thế cơ chế điều phối màn hình tạm trong `App.tsx` bằng hệ thống điều hướng chính thức, đồng thời thiết lập trải nghiệm sau đăng nhập theo hướng camera-first.
+    *   **Mô tả**: Tạo `NavigationContainer`, `RootNavigator`, `AuthStack` và `AppTabs` hoặc `AppStack`. Di chuyển flow Onboarding/Login/Register vào AuthStack. Sau khi đăng nhập, người dùng vào authenticated area với Camera/Home là điểm vào chính. App navigation cần chuẩn bị các khu vực: Camera/Home, Timeline/Feed, Memories, Expenses và Profile. Xóa nút test camera tạm, xóa state chuyển màn hình tạm trong `App.tsx`. `App.tsx` chỉ còn root providers và navigator. CameraScreen từ T-14.1/T-14.2 được gắn vào flow chính thức thay vì mở bằng nút test.
     *   **Module ảnh hưởng**: Mobile Navigation Foundation
-    *   **Test**: App mở được, restore session hoạt động, login/logout đúng flow, tab hoặc stack điều hướng giữa Timeline/Expenses/Camera hoạt động, không còn UI chi tiết tích lũy trong `App.tsx`.
+    *   **Test**: App mở được, restore session hoạt động, login/logout đúng flow, sau đăng nhập vào Camera/Home mặc định, điều hướng tới Timeline/Feed, Memories, Expenses và Profile hoạt động, CameraScreen mở bằng navigation chính thức, không còn UI chi tiết tích lũy trong `App.tsx`.
     *   **Dependency**: T-12.4, T-13.2, T-14.2
     *   **Trạng thái**: Todo
-*   **T-14.3**: Màn hình Timeline Feed (Dòng thời gian nhật ký)
-    *   **Mục tiêu**: Xem lại nhật ký ảnh kết hợp chi tiêu.
-    *   **Mô tả**: Bố cục Timeline dạng cuộn dọc hiển thị các thẻ snap lớn, overlay caption mờ ở đáy ảnh, hiển thị các tag chi tiêu đính kèm. TimelineScreen sẽ được gắn vào navigation chính thức đã tạo ở T-14.2.5. Không mount Timeline tạm trực tiếp trong App.tsx. Tích hợp TimelineScreen vào AppTabs/AppStack đã có từ T-14.2.5.
+*   **T-14.3**: Timeline Feed cá nhân trong flow camera-first
+    *   **Mục tiêu**: Xem lại nhật ký ảnh kết hợp chi tiêu theo dạng dòng thời gian cá nhân.
+    *   **Mô tả**: Tạo TimelineScreen hiển thị các snap của người dùng theo dạng cuộn dọc. Mỗi thẻ snap có ảnh lớn bo góc, caption overlay mờ ở đáy ảnh, tag quyền riêng tư và các tag chi tiêu đính kèm. TimelineScreen được gắn vào navigation chính thức đã tạo ở T-14.2.5, không mount tạm trực tiếp trong `App.tsx`. Có thể thiết kế theo cảm hứng camera-first: từ Camera/Home người dùng có thể chuyển nhanh xuống Feed hoặc mở tab Feed riêng, tùy giải pháp UI sạch nhất.
     *   **Module ảnh hưởng**: Mobile Timeline Feature
-    *   **Test**: Bố cục hiển thị đẹp mắt, các nhãn chi tiêu hiển thị đúng vị trí bên dưới ảnh snap tương ứng.
+    *   **Test**: Timeline hiển thị đẹp, ảnh snap load đúng URL trên thiết bị thật, caption overlay đúng vị trí, các nhãn chi tiêu nằm dưới hoặc trên thẻ snap đúng thiết kế, pull-to-refresh và infinite scroll hoạt động nếu API hỗ trợ pagination.
     *   **Dependency**: T-11.4, T-14.2, T-14.2.5
     *   **Trạng thái**: Todo
-*   **T-14.4**: Bảng chọn thả emoji reaction nhanh
+*   **T-14.4**: Màn hình Memories/Kỷ niệm
+    *   **Mục tiêu**: Cho phép người dùng xem lại các khoảnh khắc đã chụp theo ngày/tháng, tạo cảm giác nhật ký ảnh cá nhân.
+    *   **Mô tả**: Thiết kế màn hình Memories dạng lịch/lưới theo tháng. Những ngày có snap sẽ hiển thị thumbnail nhỏ, ngày hiện tại hoặc ngày có nhiều snap được nhấn mạnh bằng viền/hiệu ứng. Có thể dùng layout sáng tạo theo tinh thần dark mode, glassmorphism và camera-first. Không cần copy y hệt app mẫu, nhưng cần giữ cảm giác “kỷ niệm theo thời gian”.
+    *   **Module ảnh hưởng**: Mobile Memories Feature
+    *   **Test**: Hiển thị được danh sách ngày/tháng có snap, thumbnail load đúng, bấm vào ngày hoặc thumbnail có thể mở ảnh hoặc chuẩn bị điều hướng sang timeline/detail nếu task sau yêu cầu.
+    *   **Dependency**: T-14.2.5, T-14.3
+    *   **Trạng thái**: Todo
+*   **T-14.5**: Bảng chọn thả emoji reaction nhanh
     *   **Mục tiêu**: Tương tác cảm xúc nhanh với bạn bè.
     *   **Mô tả**: Bấm giữ hoặc nhấn vào icon reaction để hiện popover chứa các emoji (👍, ❤️, 😂, 😮). Bấm chọn sẽ gọi API thả reaction.
     *   **Module ảnh hưởng**: Mobile Timeline Feature
@@ -461,7 +468,7 @@
     *   **Mô tả**: Hiển thị tổng số tiền ngày/tháng bằng font chữ lớn nghệ thuật, tạo điểm nhấn Glassmorphism trên nền.
     *   **Module ảnh hưởng**: Mobile Statistics Feature
     *   **Test**: Nhận dữ liệu từ API và hiển thị đúng định dạng tiền tệ (ví dụ: 120.000 đ).
-    *   **Dependency**: T-11.4, T-12.4
+    *   **Dependency**: T-11.4, T-12.4, T-14.2.5
     *   **Trạng thái**: Todo
 *   **T-15.2**: Tích hợp các biểu đồ phân tích (Pie Chart & Trend Chart)
     *   **Mục tiêu**: Trực quan hóa hành vi tiêu dùng của người dùng.
@@ -479,21 +486,21 @@
     *   **Mô tả**: Màn hình tìm kiếm người dùng khác bằng email/username, hiển thị danh sách bạn bè hiện tại và danh sách lời mời kết bạn đang chờ.
     *   **Module ảnh hưởng**: Mobile Social Feature
     *   **Test**: Bấm "Chấp nhận" lời mời kết bạn $\rightarrow$ danh sách bạn bè tăng thêm và lời mời biến mất.
-    *   **Dependency**: T-11.4, T-12.4
+    *   **Dependency**: T-11.4, T-12.4, T-14.2.5
     *   **Trạng thái**: Todo
 *   **T-16.2**: Giao diện Private Friend Feed
     *   **Mục tiêu**: Theo dõi các cập nhật khoảnh khắc từ bạn bè.
     *   **Mô tả**: Bảng tin cuộn dọc hiển thị các snap chia sẻ công khai của bạn bè, tích hợp bảng thả reaction.
     *   **Module ảnh hưởng**: Mobile Social Feature
     *   **Test**: Kiểm tra feed chỉ tải các snap của bạn bè, không trộn lẫn timeline cá nhân.
-    *   **Dependency**: T-16.1, T-14.4
+    *   **Dependency**: T-16.1, T-14.2.5, T-14.5
     *   **Trạng thái**: Todo
 *   **T-16.3**: Giao diện Sửa Profile cá nhân
     *   **Mục tiêu**: Cho phép cập nhật thông tin hiển thị và ảnh đại diện.
     *   **Mô tả**: Cho phép chọn ảnh từ thư viện thiết bị bằng `expo-image-picker`, cập nhật username/avatar qua API.
     *   **Module ảnh hưởng**: Mobile Profile Feature
     *   **Test**: Đổi avatar thành công, màn hình chính cập nhật avatar mới ngay lập tức.
-    *   **Dependency**: T-11.4, T-12.4
+    *   **Dependency**: T-11.4, T-12.4, T-14.2.5
     *   **Trạng thái**: Todo
 
 ---

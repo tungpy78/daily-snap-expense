@@ -233,25 +233,40 @@ sequenceDiagram
 
 ---
 
-### Mobile Navigation Flow sau T-14.2.5
+### Mobile Camera-first Flow sau T-14.2.5
 
-- `App.tsx` chỉ bọc root providers như `SafeAreaProvider` và `NavigationContainer`.
-- `RootNavigator` quyết định nhánh Auth hoặc App dựa trên `useAuthStore.isAuthenticated`.
-- `AuthStack` gồm:
-  - Onboarding
-  - Login
-  - Register
-- `AppTabs` hoặc `AppStack` gồm các khu vực authenticated:
-  - Timeline
-  - Expenses
-  - Camera / Create Snap
-  - Statistics
-  - Friends/Profile
-- Camera flow chính thức:
-  - Người dùng mở Camera từ tab/button trong App navigation.
-  - Chụp ảnh, nén ảnh, nhập caption, đính kèm quick expenses.
-  - Sau khi tạo snap thành công, quay về Timeline hoặc Expenses và refresh dữ liệu liên quan.
-- Không tiếp tục thêm màn hình mới bằng state tạm trong `App.tsx`.
+Sau khi đăng nhập thành công, app không còn ưu tiên màn Expenses làm màn chính. Trải nghiệm authenticated chuyển sang hướng camera-first:
+
+1. Người dùng mở app.
+2. `useAuthStore.restoreSession()` kiểm tra token.
+3. Nếu chưa đăng nhập:
+   - Onboarding
+   - Login
+   - Register
+4. Nếu đã đăng nhập:
+   - App mở vào Camera/Home mặc định.
+   - Camera là hành động chính để tạo snap.
+   - Người dùng chụp ảnh.
+   - Ảnh được nén.
+   - Preview cho phép nhập caption, chọn privacy và đính kèm quick expenses.
+   - Lưu snap gọi `POST /snaps` multipart/form-data.
+   - Sau khi lưu thành công, app refresh Timeline/Feed và Expenses nếu cần.
+5. Timeline/Feed dùng để xem lại snap đã đăng.
+6. Memories/Kỷ niệm dùng để xem lại snap theo ngày/tháng.
+7. Expenses là khu vực phụ trợ để xem danh sách chi tiêu đã tạo từ snap hoặc nhập thủ công.
+8. Profile là nơi quản lý tài khoản, logout và các tính năng social/profile sau này.
+
+`App.tsx` chỉ giữ root providers và navigator. Không tiếp tục mount màn hình mới bằng local state tạm trong `App.tsx`.
+
+### Camera Flow chính thức
+
+- Người dùng mở Camera từ Camera/Home tab hoặc navigation action chính thức.
+- CameraScreen xử lý permission, chụp ảnh và nén ảnh.
+- Preview snap xử lý caption, privacy và quick expenses.
+- Sau khi save thành công:
+  - refresh Timeline/Feed
+  - refresh Expenses nếu snap có expenses đính kèm
+  - điều hướng về Camera/Home hoặc Timeline tùy UI task hiện tại quy định.
 
 ---
 
