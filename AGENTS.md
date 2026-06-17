@@ -21,6 +21,8 @@ Welcome, agent! This file defines the guidelines, processes, and rules for AI ag
   - `10-coding-rule.md`: Coding standards, linting, testing, and conventions.
   - `11-task.md`: Tasks and progress tracking.
   - `12-review.md`: Project reviews, retro, and technical debt log.
+  - `13-flow.md`: Mobile/backend user flows, navigation flows, and feature flows.
+  - `14-frontend-design.md`: Frontend/mobile visual design skill and camera-first UI direction.
 
 ## How to Work
 1. **Understand first**: Check the requirements in `docs/` before implementing any feature.
@@ -28,3 +30,15 @@ Welcome, agent! This file defines the guidelines, processes, and rules for AI ag
 3. **Write tests**: Follow the guidelines in `docs/10-coding-rule.md`.
 4. **Update docs**: When code implementation changes behavior, update the corresponding markdown documentation in `docs/`.
 5. **Keep tasks updated**: Track progress in `docs/11-task.md`.
+
+## Frontend/UI Design Rule
+
+For any task that creates or changes mobile UI, navigation, screen layout, camera flow, timeline, memories, statistics, profile, or social UI, the agent must read:
+
+- `docs/09-ui.md`
+- `docs/10-coding-rule.md`
+- `docs/14-frontend-design.md`
+
+Before coding, the agent must produce a short UI/design plan when the task is visually significant.
+
+The design must follow the DailySnap Expense camera-first direction and must not look like a generic expense tracker template.
