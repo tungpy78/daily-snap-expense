@@ -5363,3 +5363,26 @@ Backend static:
 
 ### Decision
 - Approved
+
+---
+
+### T-14.3 - Feed trong Home camera-first
+
+Kết quả:
+- Tích hợp Feed thật vào Page 2 của Home camera-first.
+- Tách store feed riêng `useHomeFeedStore`.
+- Dữ liệu lấy từ `/snaps/timeline` và `/friends/feed`.
+- Dùng `Promise.allSettled` để hỗ trợ partial success.
+- Merge, dedupe theo snap id và sort theo `createdAt` giảm dần.
+- Tách helper `normalizeImageUrl` dùng chung.
+- `HomeScreen` đã chuyển sang FlatList root duy nhất, không còn nested VirtualizedList trong ScrollView.
+- Feed hiển thị theo kiểu vertical page snapping, mỗi snap chiếm một viewport.
+- Sau khi lưu snap mới, feed refresh để snap mới xuất hiện.
+
+Kiểm thử:
+- `npx tsc --noEmit` pass.
+- Expo Go chạy được.
+- Không còn cảnh báo nested VirtualizedLists.
+- Camera Home vẫn hoạt động.
+- SnapComposerModal vẫn lưu snap được.
+- Feed thật hiển thị ảnh/caption/author/time/expense tags.

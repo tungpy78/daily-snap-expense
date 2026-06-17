@@ -444,7 +444,16 @@
     *   **Module ảnh hưởng**: Mobile Home Feed Feature
     *   **Test**: Home hiển thị camera card phía trên và Feed phía dưới, ảnh snap load đúng URL trên thiết bị thật, feed sắp xếp theo thời gian đăng, caption và expense tags hiển thị đúng, pull-to-refresh và infinite scroll hoạt động nếu API hỗ trợ pagination.
     *   **Dependency**: T-11.4, T-14.2, T-14.2.5
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
+    *   **Ghi nhận ngắn gọn**:
+        - Feed thật nằm trong Home Page 2.
+        - Fetch snap cá nhân từ `GET /snaps/timeline`, response `data.snaps`.
+        - Fetch snap bạn bè từ `GET /friends/feed`, response `data.feed`.
+        - Dùng `useHomeFeedStore` riêng, không nhét vào `useSnapStore`.
+        - Merge/dedupe/sort theo `createdAt` mới nhất trước.
+        - Normalize `imageUrl` để ảnh localhost/127.0.0.1 hiển thị được trên thiết bị thật.
+        - HomeScreen dùng FlatList root duy nhất để tránh lỗi nested VirtualizedLists.
+        - Feed dùng vertical page snapping, mỗi snap hiển thị như một page/khoảnh khắc.
 *   **T-14.4**: Màn hình Memories/Kỷ niệm
     *   **Mục tiêu**: Cho phép người dùng xem lại các khoảnh khắc đã chụp theo ngày/tháng, tạo cảm giác nhật ký ảnh cá nhân.
     *   **Mô tả**: Thiết kế màn hình Memories dạng lịch/lưới theo tháng. Những ngày có snap sẽ hiển thị thumbnail nhỏ, ngày hiện tại hoặc ngày có nhiều snap được nhấn mạnh bằng viền/hiệu ứng. Có thể dùng layout sáng tạo theo tinh thần dark mode, glassmorphism và camera-first. Không cần copy y hệt app mẫu, nhưng cần giữ cảm giác “kỷ niệm theo thời gian”.

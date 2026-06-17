@@ -275,6 +275,22 @@ Sau khi đăng nhập thành công, app không còn ưu tiên màn Expenses và 
 
 ---
 
+### Home Feed Flow sau T-14.3
+
+Home camera-first gồm các trang cuộn dọc theo kiểu page snapping:
+
+1. Page đầu tiên là camera card để chụp snap.
+2. Các page tiếp theo là từng snap trong Feed.
+3. Feed lấy dữ liệu từ:
+   - `GET /snaps/timeline` cho snap cá nhân.
+   - `GET /friends/feed` cho snap bạn bè.
+4. Mobile merge hai nguồn dữ liệu, loại trùng theo snap id và sắp xếp `createdAt` mới nhất trước.
+5. Ảnh snap được normalize URL để chạy được trên thiết bị thật Expo Go.
+6. Khi người dùng tạo snap mới thành công, Home gọi refresh feed.
+7. Nếu friend feed lỗi nhưng own timeline thành công, vẫn hiển thị snap cá nhân.
+
+---
+
 ## 5. Timeline Flow (Dòng thời gian cá nhân)
 
 ### Mục tiêu

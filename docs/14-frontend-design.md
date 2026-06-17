@@ -239,16 +239,14 @@ Design notes:
 
 ### Home Feed
 
-Goal: review captured moments without leaving the camera-first Home context.
+Sau T-14.3, Home Feed là feed thật, không còn placeholder. Feed sử dụng vertical page snapping để tạo cảm giác xem từng khoảnh khắc như social camera journal.
 
 Design notes:
-
-- Feed lives below the Home camera card.
-- Show personal snaps and public/friend-visible snaps in chronological order.
-- Use large rounded snap cards.
-- Caption can be an overlay or small pill near the image.
-- Expense tags should support the memory, not dominate it.
-- Avoid turning Feed into ExpenseList.
+- Mỗi snap nên chiếm một viewport/page.
+- Ảnh là thành phần trung tâm.
+- Caption, author, time và expense tags chỉ là lớp ngữ cảnh hỗ trợ.
+- Không biến feed thành expense tracker.
+- Không copy Locket/Snap 1:1, chỉ lấy cảm hứng về cảm giác camera-first và memory-first.
 
 ### Memories
 
