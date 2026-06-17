@@ -431,12 +431,19 @@
     *   **Test**: Nhập caption, chọn đính kèm 2 khoản chi tiêu $\rightarrow$ nhấn Lưu $\rightarrow$ Hệ thống gửi đúng định dạng payload multipart/form-data lên Backend.
     *   **Dependency**: T-14.1, T-13.2
     *   **Trạng thái**: Done
+*   **T-14.2.5**: Cấu hình React Navigation và flow chính thức cho Mobile
+    *   **Mục tiêu**: Thay thế cơ chế điều phối màn hình tạm trong `App.tsx` bằng hệ thống điều hướng chính thức, chuẩn bị nền tảng cho Timeline, Camera, Expense, Statistics, Friends và Profile.
+    *   **Mô tả**: Tạo `NavigationContainer`, `RootNavigator`, `AuthStack` và `AppTabs` hoặc `AppStack` phù hợp. Di chuyển flow Onboarding/Login/Register vào AuthStack. Di chuyển các màn authenticated như Timeline placeholder, ExpenseListScreen, CameraScreen vào App navigation. Xóa nút test camera tạm và state chuyển màn hình tạm trong App.tsx. App.tsx chỉ còn root providers và navigator.
+    *   **Module ảnh hưởng**: Mobile Navigation Foundation
+    *   **Test**: App mở được, restore session hoạt động, login/logout đúng flow, tab hoặc stack điều hướng giữa Timeline/Expenses/Camera hoạt động, không còn UI chi tiết tích lũy trong `App.tsx`.
+    *   **Dependency**: T-12.4, T-13.2, T-14.2
+    *   **Trạng thái**: Todo
 *   **T-14.3**: Màn hình Timeline Feed (Dòng thời gian nhật ký)
     *   **Mục tiêu**: Xem lại nhật ký ảnh kết hợp chi tiêu.
-    *   **Mô tả**: Bố cục Timeline dạng cuộn dọc hiển thị các thẻ snap lớn, overlay caption mờ ở đáy ảnh, hiển thị các tag chi tiêu đính kèm.
+    *   **Mô tả**: Bố cục Timeline dạng cuộn dọc hiển thị các thẻ snap lớn, overlay caption mờ ở đáy ảnh, hiển thị các tag chi tiêu đính kèm. TimelineScreen sẽ được gắn vào navigation chính thức đã tạo ở T-14.2.5. Không mount Timeline tạm trực tiếp trong App.tsx. Tích hợp TimelineScreen vào AppTabs/AppStack đã có từ T-14.2.5.
     *   **Module ảnh hưởng**: Mobile Timeline Feature
     *   **Test**: Bố cục hiển thị đẹp mắt, các nhãn chi tiêu hiển thị đúng vị trí bên dưới ảnh snap tương ứng.
-    *   **Dependency**: T-11.4, T-14.2
+    *   **Dependency**: T-11.4, T-14.2, T-14.2.5
     *   **Trạng thái**: Todo
 *   **T-14.4**: Bảng chọn thả emoji reaction nhanh
     *   **Mục tiêu**: Tương tác cảm xúc nhanh với bạn bè.

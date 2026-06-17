@@ -233,6 +233,28 @@ sequenceDiagram
 
 ---
 
+### Mobile Navigation Flow sau T-14.2.5
+
+- `App.tsx` chỉ bọc root providers như `SafeAreaProvider` và `NavigationContainer`.
+- `RootNavigator` quyết định nhánh Auth hoặc App dựa trên `useAuthStore.isAuthenticated`.
+- `AuthStack` gồm:
+  - Onboarding
+  - Login
+  - Register
+- `AppTabs` hoặc `AppStack` gồm các khu vực authenticated:
+  - Timeline
+  - Expenses
+  - Camera / Create Snap
+  - Statistics
+  - Friends/Profile
+- Camera flow chính thức:
+  - Người dùng mở Camera từ tab/button trong App navigation.
+  - Chụp ảnh, nén ảnh, nhập caption, đính kèm quick expenses.
+  - Sau khi tạo snap thành công, quay về Timeline hoặc Expenses và refresh dữ liệu liên quan.
+- Không tiếp tục thêm màn hình mới bằng state tạm trong `App.tsx`.
+
+---
+
 ## 5. Timeline Flow (Dòng thời gian cá nhân)
 
 ### Mục tiêu
