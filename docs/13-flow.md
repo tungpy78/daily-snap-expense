@@ -253,7 +253,7 @@ Sau khi đăng nhập thành công, app không còn ưu tiên màn Expenses và 
    - Preview không hiển thị bảng so sánh thông số nén cho người dùng.
    - Lưu snap gọi `POST /snaps` multipart/form-data.
    - Sau khi lưu thành công, app refresh Home Feed và Expenses nếu cần.
-5. Người dùng có thể cuộn xuống dưới Home để xem Feed.
+5. HomeScreen áp dụng cơ chế cuộn trang dọc (vertical page snapping). Trang 1 chỉ hiển thị camera card và các thông tin chào hỏi. Khi người dùng vuốt xuống trang 2, màn hình Feed mới hiển thị đầy đủ.
 6. Feed hiển thị snap của chính mình và snap public/phù hợp quyền xem từ bạn bè, sắp xếp theo giờ đăng mới nhất trước.
 7. Memories/Kỷ niệm dùng để xem lại snap theo ngày/tháng.
 8. Expenses là khu vực phụ trợ để xem danh sách chi tiêu đã tạo từ snap hoặc nhập thủ công.
@@ -264,7 +264,7 @@ Sau khi đăng nhập thành công, app không còn ưu tiên màn Expenses và 
 ### Camera Flow chính thức
 
 - Người dùng mở app vào Home.
-- Home có camera card bo góc nhỏ gọn, không fullscreen toàn bộ màn.
+- Home cấu trúc dạng 2 trang cuộn dọc (paging). Trang 1 chứa camera card bo góc nhỏ gọn ở phần trên (không fullscreen toàn màn hình). Trang 2 chứa Feed hiển thị snap dạng thẻ lớn giống ứng dụng Locket.
 - CameraScreen hoặc CameraHome component xử lý permission, chụp ảnh và nén ảnh.
 - Preview snap xử lý caption, privacy và quick expenses.
 - Preview không hiển thị bảng so sánh kích thước/dung lượng ảnh cho người dùng.

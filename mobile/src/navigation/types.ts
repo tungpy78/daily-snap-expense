@@ -8,8 +8,7 @@ export type AuthStackParamList = {
 };
 
 export type AppTabParamList = {
-  CameraTab: undefined;
-  TimelineTab: undefined;
+  HomeTab: undefined;
   MemoriesTab: undefined;
   ExpensesTab: undefined;
   ProfileTab: undefined;

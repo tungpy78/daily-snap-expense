@@ -3,8 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text } from 'react-native';
 import type { AppTabParamList } from './types';
 import { theme } from '../theme/theme';
-import { CameraHomeScreen } from '../features/camera/screens/CameraHomeScreen';
-import { TimelinePlaceholderScreen } from '../features/timeline/screens/TimelinePlaceholderScreen';
+import { HomeScreen } from '../features/camera/screens/HomeScreen';
 import { MemoriesPlaceholderScreen } from '../features/memories/screens/MemoriesPlaceholderScreen';
 import { ExpenseListScreen } from '../features/expenses/screens/ExpenseListScreen';
 import { ProfileScreen } from '../features/profile/screens/ProfileScreen';
@@ -13,7 +12,7 @@ const Tab = createBottomTabNavigator<AppTabParamList>();
 
 const tabBarStyle = {
   position: 'absolute' as const,
-  backgroundColor: 'rgba(18, 24, 36, 0.88)',
+  backgroundColor: 'rgba(18, 24, 36, 0.92)',
   borderTopColor: 'rgba(255, 255, 255, 0.08)',
   borderTopWidth: 1,
   elevation: 0,
@@ -26,7 +25,7 @@ const tabBarStyle = {
 export const AppNavigator: React.FC = () => {
   return (
     <Tab.Navigator
-      initialRouteName="CameraTab"
+      initialRouteName="HomeTab"
       screenOptions={{
         headerShown: false,
         tabBarStyle,
@@ -40,22 +39,12 @@ export const AppNavigator: React.FC = () => {
       }}
     >
       <Tab.Screen
-        name="CameraTab"
-        component={CameraHomeScreen}
+        name="HomeTab"
+        component={HomeScreen}
         options={{
-          tabBarLabel: '📷 Camera',
+          tabBarLabel: 'Trang chủ',
           tabBarIcon: ({ color }) => (
-            <Text style={{ fontSize: 20, color }}>📷</Text>
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="TimelineTab"
-        component={TimelinePlaceholderScreen}
-        options={{
-          tabBarLabel: 'Timeline',
-          tabBarIcon: ({ color }) => (
-            <Text style={{ fontSize: 20, color }}>⏰</Text>
+            <Text style={{ fontSize: 20, color }}>🏠</Text>
           ),
         }}
       />

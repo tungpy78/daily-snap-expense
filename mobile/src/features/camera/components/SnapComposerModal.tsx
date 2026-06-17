@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,15 +6,12 @@ import {
   Image,
   Pressable,
   ActivityIndicator,
-  Linking,
   Modal,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CameraView, useCameraPermissions } from 'expo-camera';
-import { compressImage } from '../utils/imageCompression';
 import { z } from 'zod';
 import { theme } from '../../../theme/theme';
 import { GlassCard } from '../../../components/GlassCard';
@@ -24,16 +21,12 @@ import { useExpenseStore } from '../../expenses/store/useExpenseStore';
 import { useSnapStore } from '../store/useSnapStore';
 import { QuickExpenseDraft } from '../types/snap.types';
 
-interface CameraScreenProps {
+export type SnapComposerModalProps = {
+  visible: boolean;
+  imageUri: string | null;
   onClose: () => void;
-  onCreated?: () => void;
-}
-
-interface CompressedPhoto {
-  uri: string;
-  width: number;
-  height: number;
-}
+  onSaved: () => void;
+};
 
 const getCategoryEmoji = (categoryName: string): string => {
   const name = categoryName.toLowerCase();
@@ -99,19 +92,14 @@ const quickExpenseSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày phải có định dạng YYYY-MM-DD.'),
 });
 
-export const CameraScreen: React.FC<CameraScreenProps> = ({ onClose, onCreated }) => {
+export const SnapComposerModal: React.FC<SnapComposerModalProps> = ({
+  visible,
+  imageUri,
+  onClose,
+  onSaved,
+}) => {
   const insets = useSafeAreaInsets();
-  const [permission, requestPermission] = useCameraPermissions();
-  const [facing, setFacing] = useState<'back' | 'front'>('back');
-  const [flash, setFlash] = useState<'off' | 'on'>('off');
   
-  const [isCapturing, setIsCapturing] = useState<boolean>(false);
-  const [isCompressing, setIsCompressing] = useState<boolean>(false);
-
-  const [compressedPhoto, setCompressedPhoto] = useState<CompressedPhoto | null>(null);
-
-  const cameraRef = useRef<CameraView>(null);
-
   // States cho Snap Preview & Attach details
   const [caption, setCaption] = useState<string>('');
   const [isPrivate, setIsPrivate] = useState<boolean>(true);
@@ -139,74 +127,12 @@ export const CameraScreen: React.FC<CameraScreenProps> = ({ onClose, onCreated }
     }
   }, [categories, selectedCategoryId]);
 
-  const handleRequestPermission = async () => {
-    try {
-      await requestPermission();
-    } catch (err) {
-      console.log('Lỗi yêu cầu quyền camera:', err);
-    }
-  };
-
-  const handleOpenSettings = async () => {
-    try {
-      await Linking.openSettings();
-    } catch (err) {
-      console.log('Không thể mở Settings:', err);
-    }
-  };
-
-
-
-  const handleCapture = async () => {
-    if (isCapturing || isCompressing || !cameraRef.current) {
-      return;
-    }
-
-    try {
-      setIsCapturing(true);
-      const options = { quality: 1, skipProcessing: false };
-      const photo = await cameraRef.current.takePictureAsync(options);
-
-      if (photo) {
-        await handleCompress(photo.uri, photo.width, photo.height);
-      }
-    } catch (error) {
-      console.log('Lỗi khi chụp ảnh:', error);
-    } finally {
-      setIsCapturing(false);
-    }
-  };
-
-  const handleCompress = async (uri: string, width: number, height: number) => {
-    try {
-      setIsCompressing(true);
-      const compressed = await compressImage(uri, width, height);
-      setCompressedPhoto(compressed);
-    } catch (error) {
-      console.log('Lỗi khi nén ảnh:', error);
-    } finally {
-      setIsCompressing(false);
-    }
-  };
-
-  const handleRetake = () => {
-    setCompressedPhoto(null);
+  const handleCancel = () => {
     setCaption('');
     setIsPrivate(true);
     setAttachedExpenses([]);
     clearError();
-  };
-
-  const toggleFacing = () => {
-    setFacing((prev) => {
-      return prev === 'back' ? 'front' : 'back';
-    });
-  };
-
-  const toggleFlash = () => {
-    setFlash((prev) => {
-      return prev === 'off' ? 'on' : 'off';
-    });
+    onClose();
   };
 
   const handleAddExpense = () => {
@@ -227,21 +153,18 @@ export const CameraScreen: React.FC<CameraScreenProps> = ({ onClose, onCreated }
       const nextErrors: Record<string, string> = {};
 
       result.error.issues.forEach((issue) => {
-        const fieldName = issue.path[0];
+        const fieldName = String(issue.path[0]);
 
         if (fieldName === 'amount') {
           nextErrors.amount = issue.message;
-          return;
         }
 
         if (fieldName === 'categoryId') {
           nextErrors.categoryId = issue.message;
-          return;
         }
 
         if (fieldName === 'date') {
           nextErrors.date = issue.message;
-          return;
         }
       });
 
@@ -287,13 +210,13 @@ export const CameraScreen: React.FC<CameraScreenProps> = ({ onClose, onCreated }
   };
 
   const handleSaveSnap = async () => {
-    if (!compressedPhoto) {
+    if (!imageUri) {
       return;
     }
 
     try {
       await createSnap({
-        uri: compressedPhoto.uri,
+        uri: imageUri,
         caption: caption.trim() === '' ? null : caption.trim(),
         isPrivate,
         expenses: attachedExpenses,
@@ -302,78 +225,28 @@ export const CameraScreen: React.FC<CameraScreenProps> = ({ onClose, onCreated }
       // Refresh expense list
       await useExpenseStore.getState().refresh();
 
-      // Reset preview state so camera is ready for next shot
-      handleRetake();
+      // Reset local state
+      setCaption('');
+      setIsPrivate(true);
+      setAttachedExpenses([]);
+      clearError();
 
-      // Navigate to Timeline via onCreated callback (set by CameraHomeScreen)
-      if (onCreated) {
-        onCreated();
-      } else {
-        onClose();
-      }
+      onSaved();
     } catch (err) {
       console.log('Lỗi khi lưu snap:', err);
     }
   };
 
-  // Màn hình loading quyền
-  if (!permission) {
-    return (
-      <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={styles.loadingText}>Đang khởi tạo camera...</Text>
-      </SafeAreaView>
-    );
-  }
-
-  // Màn hình chưa cấp quyền
-  if (!permission.granted) {
-    const isPermanentlyDenied = !permission.canAskAgain;
-    return (
-      <SafeAreaView style={styles.permissionContainer}>
-        <GlassCard style={styles.permissionCard}>
-          <Text style={styles.permissionEmoji}>📷</Text>
-          <Text style={styles.permissionTitle}>Quyền truy cập Camera</Text>
-          <Text style={styles.permissionSubtitle}>
-            Ứng dụng cần quyền camera để chụp ảnh nhật ký hằng ngày và theo dõi chi tiêu trực quan.
-          </Text>
-          
-          {isPermanentlyDenied ? (
-            <View style={styles.actionContainer}>
-              <Text style={styles.deniedText}>
-                Bạn đã từ chối quyền truy cập camera trước đó. Vui lòng mở Cài đặt của máy để bật lại quyền.
-              </Text>
-              <GlassButton
-                title="Mở Cài đặt hệ thống"
-                onPress={handleOpenSettings}
-                style={styles.permissionButton}
-              />
-            </View>
-          ) : (
-            <GlassButton
-              title="Cho phép truy cập"
-              onPress={handleRequestPermission}
-              style={styles.permissionButton}
-            />
-          )}
-
-          <GlassButton
-            title="Quay lại"
-            variant="secondary"
-            onPress={onClose}
-            style={styles.permissionBackButton}
-          />
-        </GlassCard>
-      </SafeAreaView>
-    );
-  }
-
-  // Màn hình preview ảnh sau nén kèm form đăng snap
-  if (compressedPhoto) {
-    return (
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="fullScreen"
+      onRequestClose={handleCancel}
+    >
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
-          <Pressable onPress={onClose} style={styles.headerBtn} disabled={isSavingSnap}>
+          <Pressable onPress={handleCancel} style={styles.headerBtn} disabled={isSavingSnap}>
             <Text style={styles.headerBtnText}>✕ Đóng</Text>
           </Pressable>
           <Text style={styles.headerTitle}>Xem Trước & Đăng Snap</Text>
@@ -382,16 +255,18 @@ export const CameraScreen: React.FC<CameraScreenProps> = ({ onClose, onCreated }
 
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={{ flex: 1 }}
+          style={styles.keyboardAvoidingView}
         >
           <ScrollView contentContainerStyle={styles.scrollContentContainer}>
             {/* Image Preview */}
             <View style={styles.previewContainerMini}>
-              <Image
-                source={{ uri: compressedPhoto.uri }}
-                style={styles.previewImageMini}
-                resizeMode="contain"
-              />
+              {imageUri ? (
+                <Image
+                  source={{ uri: imageUri }}
+                  style={styles.previewImageMini}
+                  resizeMode="contain"
+                />
+              ) : null}
             </View>
 
             {/* Caption Input */}
@@ -518,7 +393,7 @@ export const CameraScreen: React.FC<CameraScreenProps> = ({ onClose, onCreated }
               <GlassButton
                 title="Chụp lại"
                 variant="secondary"
-                onPress={handleRetake}
+                onPress={handleCancel}
                 style={styles.retakeBtn}
                 disabled={isSavingSnap}
               />
@@ -644,61 +519,7 @@ export const CameraScreen: React.FC<CameraScreenProps> = ({ onClose, onCreated }
           </View>
         </Modal>
       </SafeAreaView>
-    );
-  }
-
-  // Giao diện Camera chính
-  return (
-    <View style={styles.cameraContainer}>
-      <CameraView
-        style={StyleSheet.absoluteFillObject}
-        facing={facing}
-        flash={flash}
-        ref={cameraRef}
-      />
-      <View style={[styles.cameraOverlay, { paddingTop: insets.top || theme.spacing.md, paddingBottom: insets.bottom || theme.spacing.lg }]}>
-        {/* Header Controls */}
-        <View style={styles.topControls}>
-          <Pressable onPress={onClose} style={styles.topBtn}>
-            <Text style={styles.topBtnText}>✕</Text>
-          </Pressable>
-
-          <View style={styles.topRightControls}>
-            <Pressable onPress={toggleFlash} style={styles.topBtn}>
-              <Text style={styles.topBtnText}>
-                {flash === 'on' ? '⚡ Bật' : '⚡ Tắt'}
-              </Text>
-            </Pressable>
-          </View>
-        </View>
-
-        {/* Bottom Actions */}
-        <View style={styles.bottomControls}>
-          <Pressable onPress={toggleFacing} style={styles.sideBtn}>
-            <Text style={styles.sideBtnText}>🔄</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={handleCapture}
-            disabled={isCapturing || isCompressing}
-            style={({ pressed }) => {
-              return [
-                styles.captureButtonOuter,
-                pressed ? styles.captureButtonPressed : null,
-              ];
-            }}
-          >
-            <View style={styles.captureButtonInner}>
-              {(isCapturing || isCompressing) ? (
-                <ActivityIndicator size="small" color={theme.colors.primary} />
-              ) : null}
-            </View>
-          </Pressable>
-
-          <View style={styles.sideBtnPlaceholder} />
-        </View>
-      </View>
-    </View>
+    </Modal>
   );
 };
 
@@ -707,144 +528,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  loadingContainer: {
+  keyboardAvoidingView: {
     flex: 1,
-    backgroundColor: theme.colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: theme.spacing.lg,
-  },
-  loadingText: {
-    marginTop: theme.spacing.md,
-    color: theme.colors.textSecondary,
-    fontSize: theme.typography.sizes.sm,
-  },
-  permissionContainer: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: theme.spacing.lg,
-  },
-  permissionCard: {
-    width: '100%',
-    alignItems: 'center',
-    padding: theme.spacing.lg,
-  },
-  permissionEmoji: {
-    fontSize: 56,
-    marginBottom: theme.spacing.md,
-  },
-  permissionTitle: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.bold,
-    color: theme.colors.textPrimary,
-    marginBottom: theme.spacing.sm,
-  },
-  permissionSubtitle: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: theme.spacing.lg,
-  },
-  actionContainer: {
-    width: '100%',
-    alignItems: 'center',
-  },
-  deniedText: {
-    fontSize: theme.typography.sizes.xs,
-    color: theme.colors.danger,
-    textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: theme.spacing.md,
-  },
-  permissionButton: {
-    width: '100%',
-    marginBottom: theme.spacing.sm,
-  },
-  permissionBackButton: {
-    width: '100%',
-  },
-  cameraContainer: {
-    flex: 1,
-    backgroundColor: '#000000',
-  },
-  cameraOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'space-between',
-    padding: theme.spacing.md,
-    backgroundColor: 'rgba(0, 0, 0, 0.15)',
-  },
-  topControls: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: theme.spacing.sm,
-  },
-  topRightControls: {
-    flexDirection: 'row',
-    gap: theme.spacing.md,
-  },
-  topBtn: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  topBtnText: {
-    color: theme.colors.textPrimary,
-    fontSize: 16,
-    fontWeight: theme.typography.weights.semibold,
-  },
-  bottomControls: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    marginBottom: theme.spacing.lg,
-    width: '100%',
-  },
-  sideBtn: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sideBtnText: {
-    fontSize: 20,
-  },
-  sideBtnPlaceholder: {
-    width: 50,
-  },
-  captureButtonOuter: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 4,
-    borderColor: theme.colors.white,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  captureButtonPressed: {
-    transform: [{ scale: 0.95 }],
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-  },
-  captureButtonInner: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: theme.colors.white,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',
