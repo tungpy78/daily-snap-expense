@@ -8,6 +8,7 @@ import {
   Image,
   Pressable,
   ScrollView,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../../../theme/theme';
@@ -122,6 +123,7 @@ export const ExpenseListScreen: React.FC = () => {
   const logout = useAuthStore((state) => state.logout);
 
   const [activeFormExpense, setActiveFormExpense] = useState<Expense | null | undefined>(undefined);
+  const [selectedPhotoUrl, setSelectedPhotoUrl] = useState<string | null>(null);
 
   useEffect(() => {
     void fetchInitialData();
@@ -158,7 +160,8 @@ export const ExpenseListScreen: React.FC = () => {
 
   const sections = groupExpensesByDate(expenses);
 
-  const renderSnapDetails = (snapDetails: Expense['snapDetails']) => {
+  const renderSnapAttachment = (expense: Expense) => {
+    const snapDetails = expense.snapDetails;
     if (!snapDetails) {
       return null;
     }
@@ -173,13 +176,18 @@ export const ExpenseListScreen: React.FC = () => {
 
     if (snapDetails.imageUrl) {
       return (
-        <View style={styles.snapContainer}>
+        <Pressable
+          onPress={() => {
+            setSelectedPhotoUrl(snapDetails.imageUrl);
+          }}
+          style={styles.snapContainer}
+        >
           <Image
             source={{ uri: snapDetails.imageUrl }}
             style={styles.snapThumbnail}
             resizeMode="cover"
           />
-        </View>
+        </Pressable>
       );
     }
 
@@ -207,13 +215,13 @@ export const ExpenseListScreen: React.FC = () => {
             <View style={[styles.iconContainer, { backgroundColor: bgColor }]}>
               <Text style={styles.emojiText}>{emoji}</Text>
             </View>
-
+ 
             <View style={styles.detailsContainer}>
               <Text style={styles.categoryNameText}>{categoryName}</Text>
               {item.note ? (
                 <Text style={styles.noteText}>{item.note}</Text>
               ) : null}
-              {renderSnapDetails(item.snapDetails)}
+              {renderSnapAttachment(item)}
             </View>
 
             <View style={styles.amountContainer}>
@@ -409,6 +417,41 @@ export const ExpenseListScreen: React.FC = () => {
           refresh();
         }}
       />
+
+      {/* Photo Viewer Modal */}
+      <Modal
+        visible={selectedPhotoUrl !== null}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {
+          setSelectedPhotoUrl(null);
+        }}
+      >
+        <View style={styles.photoModalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => {
+              setSelectedPhotoUrl(null);
+            }}
+          />
+          <View style={styles.photoModalContainer} pointerEvents="box-none">
+            {selectedPhotoUrl ? (
+              <Image
+                source={{ uri: selectedPhotoUrl }}
+                style={styles.photoLarge}
+                resizeMode="contain"
+              />
+            ) : null}
+            <GlassButton
+              title="Đóng"
+              onPress={() => {
+                setSelectedPhotoUrl(null);
+              }}
+              style={styles.photoModalCloseButton}
+            />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -619,5 +662,27 @@ const styles = StyleSheet.create({
   addButton: {
     height: 36,
     paddingHorizontal: theme.spacing.sm,
+  },
+  photoModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoModalContainer: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.lg,
+  },
+  photoLarge: {
+    width: '90%',
+    height: '70%',
+    borderRadius: theme.borderRadius.md,
+  },
+  photoModalCloseButton: {
+    marginTop: theme.spacing.lg,
+    width: '60%',
   },
 });

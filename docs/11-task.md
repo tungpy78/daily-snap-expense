@@ -412,7 +412,7 @@
     *   **Module ảnh hưởng**: Mobile Expense Feature
     *   **Test**: Mock dữ liệu có snap bị xóa mềm, xác minh UI hiển thị nhãn text thay thế chính xác và app không bị crash.
     *   **Dependency**: T-13.1
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 
 ---
 

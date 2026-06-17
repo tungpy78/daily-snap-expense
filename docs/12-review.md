@@ -5021,6 +5021,66 @@ Kết quả:
 ### Decision
 - Approved
 
+---
+
+## Review: T-13.3 - Giao diện hiển thị an toàn khi chi tiêu có ảnh snap bị xóa mềm
+
+### Date
+2026-06-17
+
+### Tóm tắt triển khai
+- Sửa `mobile/src/features/expenses/screens/ExpenseListScreen.tsx`.
+- Thêm helper `renderSnapAttachment`.
+- Thêm local state `selectedPhotoUrl`.
+- Thêm Photo Viewer Modal custom.
+- Xử lý an toàn `snapDetails` null/undefined/snapDeleted/imageUrl.
+
+### snapDetails handling
+- Nếu `snapDetails === null` hoặc `undefined`: không render ảnh hoặc nhãn snap.
+- Nếu `snapDetails.snapDeleted === true`: render badge đỏ *"Ảnh nhật ký đã bị xóa"*.
+- Nếu `snapDetails.snapDeleted === true`: không render thumbnail, không cho mở ảnh lớn.
+- Nếu `snapDetails.imageUrl` tồn tại và `snapDeleted !== true`: render thumbnail ảnh.
+- Không crash nếu `snapDetails` thiếu field.
+
+### Photo Viewer Modal
+- Dùng `Modal` native của React Native.
+- Không cài thêm package.
+- Không dùng React Navigation.
+- Thumbnail hợp lệ được bọc bằng `Pressable`.
+- Bấm thumbnail mở ảnh lớn.
+- Modal có backdrop tối.
+- Ảnh lớn dùng `Image` với `resizeMode="contain"`.
+- Có nút "Đóng".
+- Có thể đóng bằng cách bấm backdrop.
+
+### Fixture/mock visual
+- Trong quá trình nghiệm thu visual, đã dùng fixture tạm để mô phỏng:
+  - một expense có snap `imageUrl` hợp lệ
+  - một expense có `snapDeleted === true`
+- Sau nghiệm thu visual, fixture đã được xóa khỏi code final.
+- Code final không còn `ENABLE_SNAP_VISUAL_FIXTURES`.
+- Code final không còn mock expenses.
+- Code final không tự inject dữ liệu giả vào API result.
+
+### Kết quả test
+- Expense có snap bình thường hiển thị thumbnail và mở được Photo Viewer Modal khi test bằng fixture.
+- Expense `snapDeleted` hiển thị badge đỏ và không mở ảnh khi test bằng fixture.
+- Expense thủ công không có `snapDetails` hiển thị bình thường.
+- Sau khi xóa fixture, `ExpenseListScreen` chỉ hiển thị dữ liệu thật từ API.
+- `npx tsc --noEmit` pass.
+- `npm run start -- --clear` pass.
+- Expo Go không crash.
+
+### Phạm vi chưa làm
+- Chưa triển khai camera/snap upload.
+- Chưa tạo Snap detail screen.
+- Chưa tạo dữ liệu snap thật từ mobile.
+- Chưa sửa backend.
+- Chưa cấu hình React Navigation.
+
+### Decision
+- Approved
+
 
 
 
