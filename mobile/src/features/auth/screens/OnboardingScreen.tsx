@@ -9,15 +9,16 @@ import {
   NativeScrollEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { theme } from '../../../theme/theme';
 import { GlassCard } from '../../../components/GlassCard';
 import { GlassButton } from '../../../components/GlassButton';
+import type { AuthStackParamList } from '../../../navigation/types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-interface OnboardingScreenProps {
-  onFinish: () => void;
-}
+type OnboardingNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Onboarding'>;
 
 interface SlideData {
   id: number;
@@ -26,7 +27,8 @@ interface SlideData {
   renderIllustration: () => React.ReactNode;
 }
 
-export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onFinish }) => {
+export const OnboardingScreen: React.FC = () => {
+  const navigation = useNavigation<OnboardingNavigationProp>();
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -121,7 +123,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onFinish }) 
       });
       setCurrentIndex(nextIndex);
     } else {
-      onFinish();
+      navigation.navigate('Login');
     }
   };
 

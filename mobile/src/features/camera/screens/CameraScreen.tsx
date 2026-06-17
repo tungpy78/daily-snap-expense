@@ -26,6 +26,7 @@ import { QuickExpenseDraft } from '../types/snap.types';
 
 interface CameraScreenProps {
   onClose: () => void;
+  onCreated?: () => void;
 }
 
 interface PhotoInfo {
@@ -99,7 +100,7 @@ const quickExpenseSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày phải có định dạng YYYY-MM-DD.'),
 });
 
-export const CameraScreen: React.FC<CameraScreenProps> = ({ onClose }) => {
+export const CameraScreen: React.FC<CameraScreenProps> = ({ onClose, onCreated }) => {
   const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<'back' | 'front'>('back');
@@ -353,8 +354,15 @@ export const CameraScreen: React.FC<CameraScreenProps> = ({ onClose }) => {
       // Refresh expense list
       await useExpenseStore.getState().refresh();
 
-      // Close camera and return
-      onClose();
+      // Reset preview state so camera is ready for next shot
+      handleRetake();
+
+      // Navigate to Timeline via onCreated callback (set by CameraHomeScreen)
+      if (onCreated) {
+        onCreated();
+      } else {
+        onClose();
+      }
     } catch (err) {
       console.log('Lỗi khi lưu snap:', err);
     }

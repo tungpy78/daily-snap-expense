@@ -15,7 +15,6 @@ import { theme } from '../../../theme/theme';
 import { GlassCard } from '../../../components/GlassCard';
 import { GlassButton } from '../../../components/GlassButton';
 import { useExpenseStore } from '../store/useExpenseStore';
-import { useAuthStore } from '../../auth/store/useAuthStore';
 import { Expense } from '../types/expense.types';
 import { ExpenseFormScreen } from './ExpenseFormScreen';
 import { API_BASE_URL } from '../../../config/env';
@@ -147,21 +146,12 @@ export const ExpenseListScreen: React.FC = () => {
   const loadMore = useExpenseStore((state) => state.loadMore);
   const refresh = useExpenseStore((state) => state.refresh);
   const setSelectedCategoryId = useExpenseStore((state) => state.setSelectedCategoryId);
-  const resetExpenseState = useExpenseStore((state) => state.resetExpenseState);
-
-  const logout = useAuthStore((state) => state.logout);
-
   const [activeFormExpense, setActiveFormExpense] = useState<Expense | null | undefined>(undefined);
   const [selectedPhotoUrl, setSelectedPhotoUrl] = useState<string | null>(null);
 
   useEffect(() => {
     void fetchInitialData();
   }, [fetchInitialData]);
-
-  const handleLogout = async () => {
-    resetExpenseState();
-    await logout();
-  };
 
   const groupExpensesByDate = (expenseList: Expense[]): ExpenseSection[] => {
     const groups: Record<string, Expense[]> = {};
@@ -384,12 +374,6 @@ export const ExpenseListScreen: React.FC = () => {
               setActiveFormExpense(null);
             }}
             style={styles.addButton}
-          />
-          <GlassButton
-            title="Đăng xuất"
-            variant="danger"
-            onPress={handleLogout}
-            style={styles.logoutButton}
           />
         </View>
       </View>

@@ -1,29 +1,25 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Pressable, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { z } from 'zod';
 import { theme } from '../../../theme/theme';
 import { GlassCard } from '../../../components/GlassCard';
 import { GlassInput } from '../../../components/GlassInput';
 import { GlassButton } from '../../../components/GlassButton';
 import { useAuthStore } from '../store/useAuthStore';
+import type { AuthStackParamList } from '../../../navigation/types';
 
-interface LoginScreenProps {
-  onLoginSuccess?: (username: string) => void;
-  onNavigateToRegister: () => void;
-  onNavigateToOnboarding: () => void;
-}
+type LoginNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
 const loginSchema = z.object({
   usernameOrEmail: z.string().min(1, { message: 'Tên đăng nhập hoặc email không được để trống.' }),
   password: z.string().min(6, { message: 'Mật khẩu phải chứa ít nhất 6 ký tự.' }),
 });
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({
-  onLoginSuccess,
-  onNavigateToRegister,
-  onNavigateToOnboarding,
-}) => {
+export const LoginScreen: React.FC = () => {
+  const navigation = useNavigation<LoginNavigationProp>();
   const [usernameOrEmail, setUsernameOrEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -51,7 +47,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     } else {
       try {
         await login(usernameOrEmail.trim(), password);
-        // Do not call onLoginSuccess because App.tsx listens to useAuthStore.isAuthenticated
+        // RootNavigator will automatically switch to AppNavigator when isAuthenticated becomes true
       } catch (err: unknown) {
         const message =
           err instanceof Error && err.message.trim().length > 0
@@ -135,13 +131,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
             <View style={styles.registerRow}>
               <Text style={styles.registerText}>Chưa có tài khoản? </Text>
-              <Pressable onPress={onNavigateToRegister} disabled={isLoading}>
+              <Pressable onPress={() => { navigation.navigate('Register'); }} disabled={isLoading}>
                 <Text style={styles.registerLink}>Đăng ký ngay</Text>
               </Pressable>
             </View>
           </GlassCard>
 
-          <Pressable onPress={onNavigateToOnboarding} style={styles.backButton} disabled={isLoading}>
+          <Pressable onPress={() => { navigation.navigate('Onboarding'); }} style={styles.backButton} disabled={isLoading}>
             <Text style={styles.backButtonText}>← Quay lại Onboarding</Text>
           </Pressable>
         </ScrollView>

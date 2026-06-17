@@ -9,21 +9,21 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { z } from 'zod';
 import { theme } from '../../../theme/theme';
 import { GlassCard } from '../../../components/GlassCard';
 import { GlassInput } from '../../../components/GlassInput';
 import { GlassButton } from '../../../components/GlassButton';
 import { useAuthStore } from '../store/useAuthStore';
+import type { AuthStackParamList } from '../../../navigation/types';
 
 // ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
 
-interface RegisterScreenProps {
-  onRegisterSuccess?: () => void;
-  onNavigateToLogin: () => void;
-}
+type RegisterNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
 
 // ---------------------------------------------------------------------------
 // Form types
@@ -71,10 +71,8 @@ const registerSchema = z
 // Component
 // ---------------------------------------------------------------------------
 
-export const RegisterScreen: React.FC<RegisterScreenProps> = ({
-  onRegisterSuccess,
-  onNavigateToLogin,
-}) => {
+export const RegisterScreen: React.FC = () => {
+  const navigation = useNavigation<RegisterNavigationProp>();
   const [form, setForm] = useState<RegisterFormState>({
     username: '',
     email: '',
@@ -223,7 +221,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
             {/* Link quay lại Đăng nhập */}
             <View style={styles.loginRow}>
               <Text style={styles.loginText}>Đã có tài khoản? </Text>
-              <Pressable onPress={onNavigateToLogin} disabled={isLoading}>
+              <Pressable onPress={() => { navigation.navigate('Login'); }} disabled={isLoading}>
                 <Text style={styles.loginLink}>Đăng nhập</Text>
               </Pressable>
             </View>
