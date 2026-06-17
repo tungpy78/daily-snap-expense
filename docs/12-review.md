@@ -4916,6 +4916,112 @@ Kết quả:
 ### Decision
 - Approved
 
+---
+
+## Review: T-13.2 - Form thêm/sửa chi tiêu thủ công
+
+### Date
+2026-06-17
+
+### Tóm tắt triển khai
+- Tạo `mobile/src/features/expenses/screens/ExpenseFormScreen.tsx`.
+- Sửa `mobile/src/features/expenses/types/expense.types.ts`.
+- Sửa `mobile/src/features/expenses/store/useExpenseStore.ts`.
+- Sửa `mobile/src/features/expenses/screens/ExpenseListScreen.tsx`.
+- Tích hợp form thêm/sửa chi tiêu thủ công bằng overlay/local state, chưa dùng React Navigation.
+
+### API đã dùng
+- `POST /expenses`
+- `PUT /expenses/:id`
+- Payload thật đã dùng:
+  - `amount`: number
+  - `categoryId`: string
+  - `date`: string dạng YYYY-MM-DD
+  - `note`: string | null
+- Không gửi `snapId`, không gửi `snapDetails`, không sửa backend.
+
+### Types đã thêm
+- `CreateExpensePayload`
+- `UpdateExpensePayload`
+- `ExpenseFormMode`
+- `ExpenseFormInitialValues`
+
+### Store actions
+- `createExpense(payload)`
+- `updateExpense(expenseId, payload)`
+- Hành vi:
+  - Gọi API qua `apiClient`.
+  - Parse lỗi backend bằng runtime guard type-safe.
+  - Khi lỗi: set error và throw lại `Error(message)`.
+  - Khi create/update thành công: refresh lại danh sách từ offset 0.
+  - Không log token.
+
+### Form validation
+- Dùng Zod schema trực tiếp trong `ExpenseFormScreen`.
+- Validate `amount > 0` (thông báo: *"Vui lòng nhập số tiền hợp lệ."*).
+- Validate `categoryId` required (thông báo: *"Vui lòng chọn danh mục."*).
+- Validate `date` dạng YYYY-MM-DD (thông báo: *"Vui lòng chọn ngày chi tiêu."*).
+- `note` optional.
+- Dùng `safeParse`.
+- Render lỗi tiếng Việt màu đỏ gần field tương ứng.
+
+### Amount formatting/parsing
+- Amount input hiển thị số lớn ở đầu form.
+- Khi nhập, format phân cách hàng nghìn bằng dấu chấm.
+- Khi submit, remove ký tự không phải số rồi parse thành number.
+- Không crash khi user nhập ký tự lạ.
+
+### Category grid
+- Category grid hiển thị categories từ store.
+- Category active có style nổi bật (border và background màu tương ứng hoặc màu primary).
+- Không dùng icon package, không cài thêm package.
+- Dùng emoji/text fallback an toàn.
+- Nếu categories rỗng, form hiển thị thông báo: *"Bạn chưa có danh mục chi tiêu. Hãy tạo danh mục hoặc seed dữ liệu test cho tài khoản này."* và không cho submit.
+
+### Date picker custom
+- Không cài `datetimepicker`.
+- Có nút nhanh Hôm nay/Hôm qua.
+- Có nút Ngày khác mở Modal custom.
+- Modal cho chọn Ngày/Tháng/Năm bằng nút tăng/giảm.
+- Kết quả trả về YYYY-MM-DD.
+- Có xử lý ngày tối đa theo tháng/năm để tránh ngày invalid.
+- **Fix UI**: Date picker modal được tăng contrast, backdrop tối rõ `rgba(0, 0, 0, 0.85)`, card modal opaque hơn với màu nền `#1A2234`, text/nút dễ đọc và không còn bị UI phía sau gây nhiễu.
+
+### ExpenseListScreen integration
+- Header có nút `+ Thêm`.
+- Bấm `+ Thêm` mở form create.
+- Bấm vào expense item mở form edit.
+- Form render bằng overlay/local state trong `ExpenseListScreen`.
+- Sau save thành công, form đóng và list refresh.
+- Không dùng React Navigation.
+
+### Dữ liệu test category
+- Ban đầu current user chưa có category thuộc `user_id` nên form hiển thị *"Bạn chưa có danh mục chi tiêu. Hãy tạo danh mục hoặc seed dữ liệu test cho tài khoản này."*.
+- Sau khi seed đúng category cho user đang login, `/categories` trả count = 1 và form hiển thị category Food.
+- **Ghi chú dài hạn**: Nếu muốn user mới tự có danh mục mặc định, cần task backend riêng để auto-create default categories khi register hoặc hỗ trợ global categories. T-13.2 không sửa backend.
+
+### Kết quả test
+- Login đúng vào `ExpenseListScreen`.
+- Mở form tạo chi tiêu thành công.
+- Category Food hiển thị sau khi seed đúng user.
+- Date picker modal hiển thị tốt, tương phản cao, không bị nhìn xuyên qua.
+- Tạo expense mới thành công.
+- Danh sách refresh và hiển thị expense mới.
+- TypeScript pass.
+- Metro pass.
+
+### Phạm vi chưa làm
+- Chưa cấu hình React Navigation chính thức.
+- Chưa tạo Bottom Tab Navigator.
+- Chưa tạo form xóa expense.
+- Chưa tạo Snap detail screen.
+- Chưa tạo Category management screen.
+- Chưa xử lý default categories tự động cho user mới ở backend.
+
+### Decision
+- Approved
+
+
 
 
 

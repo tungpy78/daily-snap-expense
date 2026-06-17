@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { apiClient } from '../../../services/api';
 import { extractApiErrorMessage } from '../../auth/store/useAuthStore';
-import { Expense, Category, ExpenseListResponse, CategoryListResponse } from '../types/expense.types';
+import { Expense, Category, ExpenseListResponse, CategoryListResponse, CreateExpensePayload, UpdateExpensePayload } from '../types/expense.types';
 import axios from 'axios';
 
 interface ExpenseState {
@@ -27,6 +27,8 @@ interface ExpenseState {
   setSelectedCategoryId: (categoryId: string | null) => void;
   clearError: () => void;
   resetExpenseState: () => void;
+  createExpense: (payload: CreateExpensePayload) => Promise<void>;
+  updateExpense: (expenseId: string, payload: UpdateExpensePayload) => Promise<void>;
 }
 
 export const useExpenseStore = create<ExpenseState>((set, get) => ({
@@ -171,7 +173,9 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
     try {
       const response = await apiClient.get<CategoryListResponse>('/categories');
       if (response.data && response.data.success) {
-        set({ categories: response.data.data.categories });
+        const categories = response.data.data.categories;
+        console.log('[ExpenseStore] fetchCategories success metadata', { count: categories.length });
+        set({ categories });
       } else {
         throw new Error('Không thể tải danh sách danh mục.');
       }
@@ -208,5 +212,41 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
       hasInitialized: false,
       error: null,
     });
+  },
+
+  createExpense: async (payload) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await apiClient.post('/expenses', payload);
+      if (response.data && response.data.success) {
+        await get().refresh();
+      } else {
+        throw new Error('Không thể tạo khoản chi tiêu.');
+      }
+    } catch (error: unknown) {
+      const message = extractApiErrorMessage(error);
+      set({ error: message });
+      throw new Error(message);
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  updateExpense: async (expenseId, payload) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await apiClient.put(`/expenses/${expenseId}`, payload);
+      if (response.data && response.data.success) {
+        await get().refresh();
+      } else {
+        throw new Error('Không thể cập nhật khoản chi tiêu.');
+      }
+    } catch (error: unknown) {
+      const message = extractApiErrorMessage(error);
+      set({ error: message });
+      throw new Error(message);
+    } finally {
+      set({ isLoading: false });
+    }
   },
 }));

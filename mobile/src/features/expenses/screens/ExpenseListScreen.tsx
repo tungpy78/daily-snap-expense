@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import { GlassButton } from '../../../components/GlassButton';
 import { useExpenseStore } from '../store/useExpenseStore';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { Expense } from '../types/expense.types';
+import { ExpenseFormScreen } from './ExpenseFormScreen';
 
 interface ExpenseSection {
   title: string;
@@ -120,6 +121,8 @@ export const ExpenseListScreen: React.FC = () => {
 
   const logout = useAuthStore((state) => state.logout);
 
+  const [activeFormExpense, setActiveFormExpense] = useState<Expense | null | undefined>(undefined);
+
   useEffect(() => {
     void fetchInitialData();
   }, [fetchInitialData]);
@@ -194,25 +197,31 @@ export const ExpenseListScreen: React.FC = () => {
     const bgColor = getCategoryBgColor(categoryColor);
 
     return (
-      <GlassCard style={styles.expenseCard}>
-        <View style={styles.expenseRow}>
-          <View style={[styles.iconContainer, { backgroundColor: bgColor }]}>
-            <Text style={styles.emojiText}>{emoji}</Text>
-          </View>
+      <Pressable
+        onPress={() => {
+          setActiveFormExpense(item);
+        }}
+      >
+        <GlassCard style={styles.expenseCard}>
+          <View style={styles.expenseRow}>
+            <View style={[styles.iconContainer, { backgroundColor: bgColor }]}>
+              <Text style={styles.emojiText}>{emoji}</Text>
+            </View>
 
-          <View style={styles.detailsContainer}>
-            <Text style={styles.categoryNameText}>{categoryName}</Text>
-            {item.note ? (
-              <Text style={styles.noteText}>{item.note}</Text>
-            ) : null}
-            {renderSnapDetails(item.snapDetails)}
-          </View>
+            <View style={styles.detailsContainer}>
+              <Text style={styles.categoryNameText}>{categoryName}</Text>
+              {item.note ? (
+                <Text style={styles.noteText}>{item.note}</Text>
+              ) : null}
+              {renderSnapDetails(item.snapDetails)}
+            </View>
 
-          <View style={styles.amountContainer}>
-            <Text style={styles.amountText}>{formatVND(item.amount)}</Text>
+            <View style={styles.amountContainer}>
+              <Text style={styles.amountText}>{formatVND(item.amount)}</Text>
+            </View>
           </View>
-        </View>
-      </GlassCard>
+        </GlassCard>
+      </Pressable>
     );
   };
 
@@ -258,6 +267,22 @@ export const ExpenseListScreen: React.FC = () => {
     );
   };
 
+  if (activeFormExpense !== undefined) {
+    return (
+      <ExpenseFormScreen
+        mode={activeFormExpense ? 'edit' : 'create'}
+        categories={categories}
+        initialExpense={activeFormExpense || undefined}
+        onClose={() => {
+          setActiveFormExpense(undefined);
+        }}
+        onSaved={() => {
+          setActiveFormExpense(undefined);
+        }}
+      />
+    );
+  }
+
   if (isLoading && expenses.length === 0) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -296,12 +321,21 @@ export const ExpenseListScreen: React.FC = () => {
           <Text style={styles.headerTitle}>DailySnap Expense</Text>
           <Text style={styles.headerSubtitle}>Danh sách chi tiêu cá nhân</Text>
         </View>
-        <GlassButton
-          title="Đăng xuất"
-          variant="danger"
-          onPress={handleLogout}
-          style={styles.logoutButton}
-        />
+        <View style={styles.headerActions}>
+          <GlassButton
+            title="+ Thêm"
+            onPress={() => {
+              setActiveFormExpense(null);
+            }}
+            style={styles.addButton}
+          />
+          <GlassButton
+            title="Đăng xuất"
+            variant="danger"
+            onPress={handleLogout}
+            style={styles.logoutButton}
+          />
+        </View>
       </View>
 
       <View style={styles.filterContainer}>
@@ -576,5 +610,14 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     width: '100%',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    alignItems: 'center',
+  },
+  addButton: {
+    height: 36,
+    paddingHorizontal: theme.spacing.sm,
   },
 });

@@ -54,3 +54,27 @@ export interface ExpenseFilters {
   startDate?: string;
   endDate?: string;
 }
+
+export interface CreateExpensePayload {
+  amount: number;
+  categoryId: string;
+  date: string; // YYYY-MM-DD
+  note: string | null;
+}
+
+export interface UpdateExpensePayload {
+  amount: number;
+  categoryId: string;
+  date: string; // YYYY-MM-DD
+  note: string | null;
+}
+
+export type ExpenseFormMode = 'create' | 'edit';
+
+export interface ExpenseFormInitialValues {
+  amount: string;
+  categoryId: string;
+  date: string;
+  note: string;
+}
+

@@ -405,7 +405,7 @@
     *   **Module ảnh hưởng**: Mobile Expense Feature
     *   **Test**: Lưu thành công một khoản chi tiêu và thấy xuất hiện ngay trên danh sách.
     *   **Dependency**: T-13.1
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-13.3**: Giao diện hiển thị an toàn khi chi tiêu có ảnh snap bị xóa mềm
     *   **Mục tiêu**: Tránh lỗi giao diện và thông tin rõ ràng cho người dùng.
     *   **Mô tả**: Khi API trả về `snapDetails.snapDeleted = true`, UI hiển thị nhãn: *"Ảnh nhật ký đã bị xóa"* trên thẻ chi tiêu, vô hiệu hóa nút xem ảnh phóng to.
