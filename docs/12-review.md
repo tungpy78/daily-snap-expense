@@ -5303,3 +5303,63 @@ Backend static:
 
 ### Decision
 - Approved
+
+---
+
+## Review: T-14.2.5 - React Navigation và Camera-first Home Shell
+
+### Date
+2026-06-17
+
+### Summary
+Đã hoàn thành cấu hình React Navigation chính thức cho ứng dụng di động gồm 4 tab (Trang chủ - HomeScreen, Kỷ niệm - MemoriesPlaceholderScreen, Chi tiêu - ExpenseListScreen, Cá nhân - ProfileScreen). HomeScreen được tối ưu hóa theo hướng camera-first với camera card bo góc hỗ trợ direct capture, nén ảnh cục bộ và hiển thị SnapComposerModal trực tiếp trên màn hình Home (không mở CameraScreen fullscreen). HomeScreen cũng áp dụng cơ chế cuộn phân trang dọc (vertical page snapping - Locket-style) để phân chia Trang 1 là Camera Home và Trang 2 là Moments Feed.
+
+### Files Changed
+- `mobile/src/navigation/types.ts`
+- `mobile/src/navigation/AppNavigator.tsx`
+- `mobile/src/features/camera/screens/HomeScreen.tsx`
+- `mobile/src/features/camera/screens/CameraScreen.tsx`
+- `mobile/src/features/camera/components/SnapComposerModal.tsx`
+- `mobile/src/features/camera/utils/imageCompression.ts`
+- `docs/09-ui.md`
+- `docs/13-flow.md`
+
+### What Went Well
+- Tích hợp thành công điều hướng chính thức qua React Navigation, chuyển hướng auth flow và app flow mượt mà.
+- Thiết lập camera preview trong card và hỗ trợ direct capture sử dụng `cameraRef` trực tiếp trên HomeScreen.
+- Tách biệt logic nén ảnh thành helper `compressImage` dùng chung cho cả HomeScreen và CameraScreen.
+- Tách biệt logic nhập liệu snap thành `SnapComposerModal` hiển thị trực tiếp dạng modal native trên HomeScreen, giúp luồng chụp-nén-composer khép kín và không làm thay đổi tab của người dùng.
+- Sửa lỗi vệt đen/letterboxing bên phải trong live preview bằng cách sử dụng kích thước tĩnh cố định (`CARD_WIDTH`, `CARD_HEIGHT`) theo tỷ lệ `3:4` tính toán trực tiếp từ `SCREEN_WIDTH` và dùng relative layout cho `CameraView`.
+- Khắc phục lỗi nháy vệt đen khi chạm biên cuộn trang (bounce stretch overscroll) bằng cách thiết lập `overScrollMode="never"` trên ScrollView.
+- Thiết kế luồng vertical page snapping (cuộn phân trang dọc) phân chia camera (Trang 1) và feed (Trang 2) Locket-style đẹp mắt.
+
+### Issues Found
+- Ban đầu do cấu hình dynamic `aspectRatio: 3 / 4` kết hợp absolute positioning của CameraView gây ra độ trễ tính toán layout của hardware layer camera trên Android khi cuộn trang, tạo ra vệt đen nhấp nháy bên phải. Đã giải quyết bằng cách tính kích thước tĩnh trong JS và chuyển CameraView sang relative block.
+- Lỗi biên dịch TypeScript do thiếu import `GlassButton` trên HomeScreen đã được phát hiện qua `npx tsc --noEmit` và xử lý triệt để.
+
+### Security Review
+- Authentication: Khôi phục phiên làm việc (`restoreSession`) hoạt động tốt khi khởi chạy app.
+- Authorization: Chỉ cho phép người dùng đã đăng nhập chụp và lưu snap.
+- Data validation: SnapComposerModal kế thừa Zod validation cho các chi tiêu nhanh đính kèm.
+- Sensitive data: Không log hay ghi nhận accessToken/refreshToken hay mật khẩu.
+
+### Performance Review
+- Query: N/A.
+- Pagination: N/A.
+- File handling: Nén ảnh local tự động giảm kích thước chiều rộng/cao tối đa 1200px và giảm chất lượng JPEG về 0.8 giúp tối ưu băng thông khi tải lên backend.
+
+### Test Review
+- Unit tests: N/A.
+- Integration tests: N/A.
+- Negative tests: Chặn capture khi đang chụp hoặc đang nén ảnh bằng state `isCapturing` và `isCompressing` kèm hiển thị loading indicator.
+- Thực nghiệm kiểm thử:
+  - `npx tsc --noEmit` pass sạch 100% không sinh lỗi.
+  - Metro Bundler chạy bình thường, QR code quét và load app thành công trên Expo Go.
+  - Lưu snap thành công và hệ thống refresh chi tiêu đúng đặc tả.
+
+### Documentation Updated
+- Yes
+- Files: `docs/09-ui.md`, `docs/13-flow.md`, `docs/11-task.md`, `docs/12-review.md`
+
+### Decision
+- Approved
