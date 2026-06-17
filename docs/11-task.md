@@ -431,18 +431,18 @@
     *   **Test**: Nhập caption, chọn đính kèm 2 khoản chi tiêu $\rightarrow$ nhấn Lưu $\rightarrow$ Hệ thống gửi đúng định dạng payload multipart/form-data lên Backend.
     *   **Dependency**: T-14.1, T-13.2
     *   **Trạng thái**: Done
-*   **T-14.2.5**: Cấu hình React Navigation và Camera-first App Shell
-    *   **Mục tiêu**: Thay thế cơ chế điều phối màn hình tạm trong `App.tsx` bằng hệ thống điều hướng chính thức, đồng thời thiết lập trải nghiệm sau đăng nhập theo hướng camera-first.
-    *   **Mô tả**: Tạo `NavigationContainer`, `RootNavigator`, `AuthStack` và `AppTabs` hoặc `AppStack`. Di chuyển flow Onboarding/Login/Register vào AuthStack. Sau khi đăng nhập, người dùng vào authenticated area với Camera/Home là điểm vào chính. App navigation cần chuẩn bị các khu vực: Camera/Home, Timeline/Feed, Memories, Expenses và Profile. Xóa nút test camera tạm, xóa state chuyển màn hình tạm trong `App.tsx`. `App.tsx` chỉ còn root providers và navigator. CameraScreen từ T-14.1/T-14.2 được gắn vào flow chính thức thay vì mở bằng nút test.
-    *   **Module ảnh hưởng**: Mobile Navigation Foundation
-    *   **Test**: App mở được, restore session hoạt động, login/logout đúng flow, sau đăng nhập vào Camera/Home mặc định, điều hướng tới Timeline/Feed, Memories, Expenses và Profile hoạt động, CameraScreen mở bằng navigation chính thức, không còn UI chi tiết tích lũy trong `App.tsx`.
+*   **T-14.2.5**: React Navigation và Camera-first Home Shell
+    *   **Mục tiêu**: Thay thế cơ chế điều phối màn hình tạm trong `App.tsx` bằng hệ thống điều hướng chính thức, đồng thời thiết lập Home sau đăng nhập theo hướng camera-first.
+    *   **Mô tả**: Tạo `NavigationContainer`, `RootNavigator`, `AuthStack` và `AppTabs` hoặc `AppStack`. Sau khi đăng nhập, người dùng vào Home mặc định. Home là màn camera-first gồm khung camera bo góc nhỏ gọn ở phía trên, các điều khiển chụp ảnh chính, và vùng Feed nằm phía dưới khi người dùng cuộn xuống. Không tạo tab Timeline riêng ở bước này. App navigation cần chuẩn bị các khu vực: Home, Memories, Expenses và Profile. Xóa nút test camera tạm, xóa state chuyển màn hình tạm trong `App.tsx`. `App.tsx` chỉ còn root providers và navigator. CameraScreen từ T-14.1/T-14.2 được gắn vào flow chính thức thông qua Home, không mở bằng nút test.
+    *   **Module ảnh hưởng**: Mobile Navigation Foundation, Mobile Camera/Home Feature
+    *   **Test**: App mở được, restore session hoạt động, login/logout đúng flow, sau đăng nhập vào Home mặc định, Home hiển thị khung camera bo góc nhỏ gọn, chụp ảnh được, điều hướng tới Memories/Expenses/Profile hoạt động, không còn Timeline tab riêng, không còn UI chi tiết tích lũy trong `App.tsx`.
     *   **Dependency**: T-12.4, T-13.2, T-14.2
     *   **Trạng thái**: Todo
-*   **T-14.3**: Timeline Feed cá nhân trong flow camera-first
-    *   **Mục tiêu**: Xem lại nhật ký ảnh kết hợp chi tiêu theo dạng dòng thời gian cá nhân.
-    *   **Mô tả**: Tạo TimelineScreen hiển thị các snap của người dùng theo dạng cuộn dọc. Mỗi thẻ snap có ảnh lớn bo góc, caption overlay mờ ở đáy ảnh, tag quyền riêng tư và các tag chi tiêu đính kèm. TimelineScreen được gắn vào navigation chính thức đã tạo ở T-14.2.5, không mount tạm trực tiếp trong `App.tsx`. Có thể thiết kế theo cảm hứng camera-first: từ Camera/Home người dùng có thể chuyển nhanh xuống Feed hoặc mở tab Feed riêng, tùy giải pháp UI sạch nhất.
-    *   **Module ảnh hưởng**: Mobile Timeline Feature
-    *   **Test**: Timeline hiển thị đẹp, ảnh snap load đúng URL trên thiết bị thật, caption overlay đúng vị trí, các nhãn chi tiêu nằm dưới hoặc trên thẻ snap đúng thiết kế, pull-to-refresh và infinite scroll hoạt động nếu API hỗ trợ pagination.
+*   **T-14.3**: Feed trong Home camera-first
+    *   **Mục tiêu**: Xem lại nhật ký ảnh của bản thân và các snap public của bạn bè ngay bên dưới Home camera-first.
+    *   **Mô tả**: Tích hợp Feed vào phần dưới của Home thay vì tạo tab Timeline riêng. Feed hiển thị các snap theo thời gian đăng mới nhất trước, bao gồm snap của chính người dùng và snap của bạn bè có quyền xem công khai/phù hợp. Mỗi item có ảnh lớn bo góc, caption overlay mờ hoặc caption pill, thông tin thời gian đăng, tác giả, quyền riêng tư nếu cần và các tag chi tiêu đính kèm. Người dùng có thể cuộn từ khung camera xuống Feed để xem nhật ký. Không mount Feed tạm trực tiếp trong `App.tsx`; Feed nằm trong Home screen thuộc navigation chính thức từ T-14.2.5.
+    *   **Module ảnh hưởng**: Mobile Home Feed Feature
+    *   **Test**: Home hiển thị camera card phía trên và Feed phía dưới, ảnh snap load đúng URL trên thiết bị thật, feed sắp xếp theo thời gian đăng, caption và expense tags hiển thị đúng, pull-to-refresh và infinite scroll hoạt động nếu API hỗ trợ pagination.
     *   **Dependency**: T-11.4, T-14.2, T-14.2.5
     *   **Trạng thái**: Todo
 *   **T-14.4**: Màn hình Memories/Kỷ niệm
@@ -455,7 +455,7 @@
 *   **T-14.5**: Bảng chọn thả emoji reaction nhanh
     *   **Mục tiêu**: Tương tác cảm xúc nhanh với bạn bè.
     *   **Mô tả**: Bấm giữ hoặc nhấn vào icon reaction để hiện popover chứa các emoji (👍, ❤️, 😂, 😮). Bấm chọn sẽ gọi API thả reaction.
-    *   **Module ảnh hưởng**: Mobile Timeline Feature
+    *   **Module ảnh hưởng**: Mobile Feed/Social Feature
     *   **Test**: Thả reaction thành công, số lượng reaction tăng trực tiếp trên giao diện.
     *   **Dependency**: T-14.3
     *   **Trạng thái**: Todo

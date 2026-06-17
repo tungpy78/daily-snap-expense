@@ -233,9 +233,9 @@ sequenceDiagram
 
 ---
 
-### Mobile Camera-first Flow sau T-14.2.5
+### Mobile Camera-first Home Flow sau T-14.2.5
 
-Sau khi đăng nhập thành công, app không còn ưu tiên màn Expenses làm màn chính. Trải nghiệm authenticated chuyển sang hướng camera-first:
+Sau khi đăng nhập thành công, app không còn ưu tiên màn Expenses và cũng không tạo Timeline tab riêng. Trải nghiệm authenticated chuyển sang Home camera-first:
 
 1. Người dùng mở app.
 2. `useAuthStore.restoreSession()` kiểm tra token.
@@ -244,29 +244,34 @@ Sau khi đăng nhập thành công, app không còn ưu tiên màn Expenses làm
    - Login
    - Register
 4. Nếu đã đăng nhập:
-   - App mở vào Camera/Home mặc định.
+   - App mở vào Home mặc định.
+   - Home hiển thị khung camera bo góc nhỏ gọn ở phần trên.
    - Camera là hành động chính để tạo snap.
    - Người dùng chụp ảnh.
-   - Ảnh được nén.
+   - Ảnh được nén nội bộ.
    - Preview cho phép nhập caption, chọn privacy và đính kèm quick expenses.
+   - Preview không hiển thị bảng so sánh thông số nén cho người dùng.
    - Lưu snap gọi `POST /snaps` multipart/form-data.
-   - Sau khi lưu thành công, app refresh Timeline/Feed và Expenses nếu cần.
-5. Timeline/Feed dùng để xem lại snap đã đăng.
-6. Memories/Kỷ niệm dùng để xem lại snap theo ngày/tháng.
-7. Expenses là khu vực phụ trợ để xem danh sách chi tiêu đã tạo từ snap hoặc nhập thủ công.
-8. Profile là nơi quản lý tài khoản, logout và các tính năng social/profile sau này.
+   - Sau khi lưu thành công, app refresh Home Feed và Expenses nếu cần.
+5. Người dùng có thể cuộn xuống dưới Home để xem Feed.
+6. Feed hiển thị snap của chính mình và snap public/phù hợp quyền xem từ bạn bè, sắp xếp theo giờ đăng mới nhất trước.
+7. Memories/Kỷ niệm dùng để xem lại snap theo ngày/tháng.
+8. Expenses là khu vực phụ trợ để xem danh sách chi tiêu đã tạo từ snap hoặc nhập thủ công.
+9. Profile là nơi quản lý tài khoản, logout và các tính năng social/profile sau này.
 
 `App.tsx` chỉ giữ root providers và navigator. Không tiếp tục mount màn hình mới bằng local state tạm trong `App.tsx`.
 
 ### Camera Flow chính thức
 
-- Người dùng mở Camera từ Camera/Home tab hoặc navigation action chính thức.
-- CameraScreen xử lý permission, chụp ảnh và nén ảnh.
+- Người dùng mở app vào Home.
+- Home có camera card bo góc nhỏ gọn, không fullscreen toàn bộ màn.
+- CameraScreen hoặc CameraHome component xử lý permission, chụp ảnh và nén ảnh.
 - Preview snap xử lý caption, privacy và quick expenses.
+- Preview không hiển thị bảng so sánh kích thước/dung lượng ảnh cho người dùng.
 - Sau khi save thành công:
-  - refresh Timeline/Feed
+  - refresh Home Feed
   - refresh Expenses nếu snap có expenses đính kèm
-  - điều hướng về Camera/Home hoặc Timeline tùy UI task hiện tại quy định.
+  - điều hướng về Home hoặc giữ tại Home tùy UX của task hiện tại.
 
 ---
 

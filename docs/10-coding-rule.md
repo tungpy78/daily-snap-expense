@@ -216,9 +216,13 @@ Tuân thủ mô hình phân tầng **Layered Architecture**:
 * **Tránh tích lũy UI:** Không để `App.tsx` tích lũy UI chi tiết hoặc mã mockup của từng màn hình. Tất cả mã nguồn giao diện màn hình (Screen UI) phải nằm gọn trong thư mục feature screens tương ứng.
 * **Dọn dẹp mã nguồn tạm:** Khi có task thay thế màn hình mockup bằng màn hình thật, bắt buộc phải dọn sạch hoàn toàn các import, style, state, hoặc comment cũ không còn sử dụng trong `App.tsx`.
 * **Giới hạn phạm vi điều hướng:** Tuyệt đối không tự ý tích hợp hoặc cấu hình thêm thư viện React Navigation cho đến khi có task chính thức yêu cầu.
-* **Tích hợp màn hình qua Navigator:** Khi đã có T-14.2.5, mọi màn hình mobile mới phải được tích hợp qua navigator chính thức. Không mount màn hình tạm trực tiếp trong `App.tsx`, trừ khi task yêu cầu rõ.
-* **App.tsx Cleanliness:** `App.tsx` chỉ được giữ root providers, restore-session bootstrap và navigator root.
-* **Camera-first Navigation Entry:** Authenticated app dùng định hướng camera-first: màn Camera/Home là entry chính sau login. Các màn Expenses, Timeline, Memories, Statistics, Friends/Profile phải đi qua App navigation.
+### Mobile navigation rule
+
+Sau T-14.2.5, mọi màn hình mobile mới phải được tích hợp qua navigator chính thức. Không mount màn hình tạm trực tiếp trong `App.tsx`, trừ khi task yêu cầu rõ.
+
+`App.tsx` chỉ được giữ root providers, restore-session bootstrap và navigator root.
+
+Authenticated app dùng định hướng camera-first Home: màn Home là entry chính sau login. Home chứa camera card bo góc ở phía trên và Feed phía dưới. Không tạo Timeline tab riêng nếu task đã quy định Feed nằm trong Home. Các màn Memories, Expenses, Statistics, Friends/Profile phải đi qua App navigation.
 
 
 

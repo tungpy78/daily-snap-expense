@@ -213,14 +213,17 @@ Failed.
 
 ### Camera/Home
 
-Goal: capture first.
+Goal: capture first, then scroll into memory.
 
 Design notes:
 
-* Camera or camera entry should be dominant.
-* Capture button should feel central.
-* Privacy/friend visibility can be a soft top pill.
-* Avoid showing too much finance data here.
+- Home is the authenticated entry.
+- Camera should be dominant but not necessarily fullscreen.
+- Prefer a rounded, compact camera card near the top, inspired by camera/social journal apps.
+- Below the camera card, the user can scroll into Feed.
+- Capture controls should feel central.
+- Do not show finance CTAs as the primary Home action.
+- Do not create a separate Timeline tab if Feed belongs inside Home for the current roadmap.
 
 ### Snap Preview
 
@@ -228,22 +231,24 @@ Goal: prepare snap before saving.
 
 Design notes:
 
-* Show compressed image clearly.
-* Caption input should feel like part of the image story.
-* Privacy selector should be visible but not dominant.
-* Quick expenses should look like small contextual tags/items.
+- Show the captured image clearly.
+- Keep caption, privacy and quick expenses close to the image story.
+- Do not show technical compression comparison tables in the user-facing preview.
+- Compression still happens internally.
+- Quick expenses should look like small contextual tags/items.
 
-### Timeline/Feed
+### Home Feed
 
-Goal: review captured moments.
+Goal: review captured moments without leaving the camera-first Home context.
 
 Design notes:
 
-* Use vertical snap cards.
-* Image large and rounded.
-* Caption overlay near bottom of image.
-* Expense tags below image or attached to card.
-* Avoid turning Timeline into ExpenseList.
+- Feed lives below the Home camera card.
+- Show personal snaps and public/friend-visible snaps in chronological order.
+- Use large rounded snap cards.
+- Caption can be an overlay or small pill near the image.
+- Expense tags should support the memory, not dominate it.
+- Avoid turning Feed into ExpenseList.
 
 ### Memories
 
