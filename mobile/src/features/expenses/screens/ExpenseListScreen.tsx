@@ -18,12 +18,41 @@ import { useExpenseStore } from '../store/useExpenseStore';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { Expense } from '../types/expense.types';
 import { ExpenseFormScreen } from './ExpenseFormScreen';
+import { API_BASE_URL } from '../../../config/env';
 
 interface ExpenseSection {
   title: string;
   dateKey: string;
   data: Expense[];
 }
+
+const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
+
+const normalizeImageUrl = (imageUrl: string | null | undefined): string | null => {
+  if (!imageUrl || imageUrl.trim().length === 0) {
+    return null;
+  }
+
+  const trimmedUrl = imageUrl.trim();
+
+  if (trimmedUrl.startsWith('http://localhost')) {
+    return trimmedUrl.replace('http://localhost:5001', API_ORIGIN);
+  }
+
+  if (trimmedUrl.startsWith('http://127.0.0.1')) {
+    return trimmedUrl.replace('http://127.0.0.1:5001', API_ORIGIN);
+  }
+
+  if (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://')) {
+    return trimmedUrl;
+  }
+
+  if (trimmedUrl.startsWith('/')) {
+    return `${API_ORIGIN}${trimmedUrl}`;
+  }
+
+  return `${API_ORIGIN}/${trimmedUrl}`;
+};
 
 const getCategoryEmoji = (categoryName: string): string => {
   const name = categoryName.toLowerCase();
@@ -175,17 +204,36 @@ export const ExpenseListScreen: React.FC = () => {
     }
 
     if (snapDetails.imageUrl) {
+      const normalizedUrl = normalizeImageUrl(snapDetails.imageUrl);
+
+      console.log('[ExpenseListScreen] snap image metadata', {
+        hasImageUrl: true,
+        imageUrlPrefix: snapDetails.imageUrl ? snapDetails.imageUrl.substring(0, 30) : '',
+        isAbsoluteUrl: snapDetails.imageUrl ? snapDetails.imageUrl.startsWith('http') : false
+      });
+
+      if (!normalizedUrl) {
+        return (
+          <View style={styles.deletedSnapBadge}>
+            <Text style={styles.deletedSnapText}>Không tải được ảnh</Text>
+          </View>
+        );
+      }
+
       return (
         <Pressable
           onPress={() => {
-            setSelectedPhotoUrl(snapDetails.imageUrl);
+            setSelectedPhotoUrl(normalizedUrl);
           }}
           style={styles.snapContainer}
         >
           <Image
-            source={{ uri: snapDetails.imageUrl }}
+            source={{ uri: normalizedUrl }}
             style={styles.snapThumbnail}
             resizeMode="cover"
+            onError={() => {
+              console.log('[ExpenseListScreen] snap image load failed');
+            }}
           />
         </Pressable>
       );
@@ -440,6 +488,9 @@ export const ExpenseListScreen: React.FC = () => {
                 source={{ uri: selectedPhotoUrl }}
                 style={styles.photoLarge}
                 resizeMode="contain"
+                onError={() => {
+                  console.log('[ExpenseListScreen] snap image load failed');
+                }}
               />
             ) : null}
             <GlassButton

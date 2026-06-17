@@ -430,7 +430,7 @@
     *   **Module ảnh hưởng**: Mobile Camera Feature
     *   **Test**: Nhập caption, chọn đính kèm 2 khoản chi tiêu $\rightarrow$ nhấn Lưu $\rightarrow$ Hệ thống gửi đúng định dạng payload multipart/form-data lên Backend.
     *   **Dependency**: T-14.1, T-13.2
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-14.3**: Màn hình Timeline Feed (Dòng thời gian nhật ký)
     *   **Mục tiêu**: Xem lại nhật ký ảnh kết hợp chi tiêu.
     *   **Mô tả**: Bố cục Timeline dạng cuộn dọc hiển thị các thẻ snap lớn, overlay caption mờ ở đáy ảnh, hiển thị các tag chi tiêu đính kèm.

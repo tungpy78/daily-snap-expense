@@ -13,6 +13,9 @@ export interface GlassInputProps {
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   style?: ViewStyle;
   editable?: boolean;
+  multiline?: boolean;
+  numberOfLines?: number;
+  textAlignVertical?: 'auto' | 'top' | 'bottom' | 'center';
 }
 
 export const GlassInput: React.FC<GlassInputProps> = ({
@@ -26,6 +29,9 @@ export const GlassInput: React.FC<GlassInputProps> = ({
   autoCapitalize = 'none',
   style,
   editable = true,
+  multiline = false,
+  numberOfLines,
+  textAlignVertical,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
 
@@ -35,6 +41,7 @@ export const GlassInput: React.FC<GlassInputProps> = ({
       isFocused ? styles.inputFocused : null,
       error ? styles.inputError : null,
       !editable ? styles.inputDisabled : null,
+      multiline ? styles.inputContainerMultiline : null,
     ];
   };
 
@@ -53,13 +60,16 @@ export const GlassInput: React.FC<GlassInputProps> = ({
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
           editable={editable}
+          multiline={multiline}
+          numberOfLines={numberOfLines}
+          textAlignVertical={multiline ? 'top' : textAlignVertical}
           onFocus={() => {
             setIsFocused(true);
           }}
           onBlur={() => {
             setIsFocused(false);
           }}
-          style={styles.input}
+          style={[styles.input, multiline ? styles.inputMultiline : null]}
         />
       </View>
       {error ? (
@@ -89,6 +99,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     justifyContent: 'center',
   },
+  inputContainerMultiline: {
+    height: undefined,
+    minHeight: 96,
+    paddingVertical: theme.spacing.sm,
+    justifyContent: 'flex-start',
+  },
   inputFocused: {
     borderColor: theme.colors.primary,
   },
@@ -103,9 +119,14 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
     fontSize: theme.typography.sizes.md,
   },
+  inputMultiline: {
+    height: undefined,
+    textAlignVertical: 'top',
+  },
   errorText: {
     fontSize: theme.typography.sizes.xs,
     color: theme.colors.error,
     marginTop: theme.spacing.xs,
   },
 });
+

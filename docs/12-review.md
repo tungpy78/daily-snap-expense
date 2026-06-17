@@ -5171,12 +5171,135 @@ Kết quả:
 ### Decision
 - Approved
 
+---
 
+## Review: T-14.2 - Giao diện Preview, nhập caption và đính kèm chi tiêu nhanh
 
+### Date
+2026-06-17
 
+### Tóm tắt triển khai
+- Tạo mobile/src/features/camera/types/snap.types.ts.
+- Tạo mobile/src/features/camera/store/useSnapStore.ts.
+- Sửa mobile/src/features/camera/screens/CameraScreen.tsx.
+- Sửa mobile/src/components/GlassInput.tsx để hỗ trợ multiline/numberOfLines.
+- Sửa mobile/src/features/expenses/screens/ExpenseListScreen.tsx để normalize snap image URL.
 
+### API đã dùng
+- POST /snaps
 
+### Backend FormData field thật
+- File ảnh: image
+- Caption: caption
+- Quyền riêng tư: isPrivate
+- Chi tiêu đính kèm: expenses
 
+Chi tiết:
+- image gửi dạng file nhị phân JPEG.
+- caption gửi string, không gửi nếu rỗng hoặc gửi theo logic đã triển khai.
+- isPrivate gửi string "true" hoặc "false".
+- expenses gửi dạng JSON string của mảng quick expenses.
 
+### Quick expenses payload format
+```json
+[
+  {
+    "amount": 50000,
+    "categoryId": "category-uuid",
+    "note": "Mua trà sữa",
+    "date": "2026-06-17"
+  }
+]
+```
 
+### Types đã thêm
+- SnapPrivacy
+- QuickExpenseDraft
+- CreateSnapPayload
+- SnapDto
+- SnapExpenseDto
+- CreateSnapResponse
+- CompressedImageInfo
 
+### useSnapStore
+- Quản lý isLoading và error.
+- Action createSnap build FormData.
+- Gọi API POST /snaps qua apiClient.
+- Parse lỗi backend type-safe.
+- Khi lỗi: set error và throw lại Error(message).
+- Khi success: gọi useExpenseStore.getState().refresh() để reload danh sách chi tiêu.
+
+### FormData và upload file
+- Dùng ReactNativeFile type cục bộ.
+- Append file vào field image.
+- Cast type-safe bằng filePart as unknown as Blob.
+- Không dùng any/as any/eslint-disable.
+
+Lỗi đã xử lý:
+- Ban đầu backend trả lỗi "File ảnh là bắt buộc" vì apiClient có default Content-Type application/json. Request multipart cần override Content-Type cho POST /snaps để backend multer parse được file. Sau khi override multipart/form-data, backend nhận được file và tạo snap thành công.
+
+### Preview UI
+- Preview ảnh nén vẫn hiển thị.
+- Bảng so sánh before/after từ T-14.1 vẫn giữ.
+- Thêm caption input multiline.
+- Thêm privacy selector.
+- Thêm danh sách quick expenses đính kèm.
+- Thêm nút Lưu Snap & Chi tiêu.
+
+### GlassInput multiline
+- GlassInput hỗ trợ multiline.
+- GlassInput hỗ trợ numberOfLines.
+- GlassInput hỗ trợ textAlignVertical.
+- Không làm hỏng Login/Register/ExpenseForm.
+
+### Quick Expense BottomSheet
+- Dùng Modal native custom, không cài package.
+- Mô phỏng BottomSheet slide-up.
+- Có amount input.
+- Có category grid.
+- Có note optional.
+- Có validation bằng Zod.
+- Có nút Hủy và Thêm khoản chi.
+
+### Validation
+- Dùng Zod safeParse.
+- Sửa lỗi ZodError .errors thành .issues.
+- Validate amount > 0.
+- Validate categoryId required.
+- Validate date YYYY-MM-DD nếu có.
+- Render lỗi tiếng Việt màu đỏ.
+- Không dùng any/as any.
+
+### Normalize imageUrl
+Backend trả:
+`http://localhost:5001/public/uploads/snaps/<uuid>.jpg`
+
+Mobile đã normalize:
+- localhost:5001 hoặc 127.0.0.1:5001 được đổi sang API_ORIGIN từ API_BASE_URL.
+- API_BASE_URL hiện dùng LAN host, ví dụ http://192.168.1.100:5001/api/v1.
+- URL ảnh normalized thành http://192.168.1.100:5001/public/uploads/snaps/<uuid>.jpg.
+- Thumbnail và Photo Viewer Modal đều dùng normalized URL.
+
+Backend static:
+- Backend serve static public folder qua /public, nên URL /public/uploads/snaps/... là hợp lệ.
+
+### Kết quả test
+- npx tsc --noEmit pass.
+- npm run start -- --clear pass.
+- Expo Go pass.
+- POST /snaps thành công.
+- ExpenseListScreen refresh từ total 2 lên total 3.
+- Thumbnail snap không còn đen sau khi normalize URL.
+- Photo Viewer Modal hiển thị ảnh.
+- Không cập nhật backend.
+- Không cài thêm package.
+
+### Phạm vi chưa làm
+- Chưa cấu hình React Navigation chính thức.
+- Chưa tạo Snap detail screen.
+- Chưa tạo feed/timeline snap chính thức.
+- Chưa tạo category management.
+- Chưa xử lý UI upload progress nâng cao.
+
+### Decision
+- Approved
