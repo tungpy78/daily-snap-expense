@@ -26,6 +26,7 @@
   - **Media/image**:
     - `expo-image-picker`
     - `expo-image-manipulator`
+    - `expo-camera` (Camera preview/chụp ảnh nội bộ trong app)
   - **Secure token storage**:
     - `expo-secure-store`
 * **Quy tắc cài đặt**:

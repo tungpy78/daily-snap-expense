@@ -423,7 +423,7 @@
     *   **Module ảnh hưởng**: Mobile Camera Feature
     *   **Test**: Kiểm tra kích thước và dung lượng ảnh sau khi nén đảm bảo không quá lớn.
     *   **Dependency**: T-11.4
-    *   **Trạng thái**: Todo
+    *   **Trạng thái**: Done
 *   **T-14.2**: Giao diện Preview, nhập caption và đính kèm chi tiêu nhanh
     *   **Mục tiêu**: Chuẩn bị đầy đủ thông tin snap trước khi lưu.
     *   **Mô tả**: Hiển thị ảnh chụp, ô viết caption, công tắc chọn quyền riêng tư và nút BottomSheet mở form nhập nhanh các khoản chi đính kèm.

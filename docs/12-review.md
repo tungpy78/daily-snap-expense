@@ -5081,6 +5081,96 @@ Kết quả:
 ### Decision
 - Approved
 
+---
+
+## Review: T-14.1 - Tích hợp Camera nội bộ và nén ảnh
+
+### Date
+2026-06-17
+
+### Tóm tắt triển khai
+- Cài expo-camera tương thích Expo SDK 54.
+- Tạo mobile/src/features/camera/screens/CameraScreen.tsx.
+- Sửa mobile/app.json để cấu hình permission camera.
+- Sửa mobile/App.tsx để mount CameraScreen tạm thời khi authenticated.
+- Thêm SafeAreaProvider ở root App để useSafeAreaInsets hoạt động.
+
+### Package
+- Đã cài expo-camera bằng npx expo install expo-camera.
+- Không cài package khác.
+- expo-image-manipulator đã có từ trước và được dùng để nén ảnh.
+
+### Camera API
+- Dùng CameraView từ expo-camera.
+- Dùng useCameraPermissions.
+- CameraView được render self-closing, không chứa children.
+- Overlay controls được đặt cùng cấp với CameraView bằng absolute positioning.
+- Đã fix warning CameraView does not support children.
+
+### Permission flow
+- Khi permission đang loading: hiển thị loading.
+- Khi chưa cấp quyền: hiển thị permission screen theo Sleek Dark / Glassmorphism.
+- Có nút xin quyền camera.
+- Nếu không thể hỏi lại quyền, có nút mở Settings bằng Linking.openSettings().
+
+### Camera controls
+- Có nút đóng camera.
+- Có nút chụp ảnh.
+- Có nút đổi camera trước/sau.
+- Có nút bật/tắt flash.
+- Có trạng thái loading khi chụp/nén.
+
+### Nén ảnh
+- Chụp ảnh bằng takePictureAsync.
+- Nén ảnh bằng expo-image-manipulator.
+- Resize cạnh lớn nhất về tối đa 1200px.
+- Output JPEG.
+- Compress khoảng 0.8.
+- Hiển thị ảnh preview sau nén.
+- Target dung lượng 150KB - 300KB là mục tiêu tối ưu, không phải guarantee tuyệt đối cho mọi ảnh, vì dung lượng phụ thuộc nội dung ảnh và thiết bị.
+
+### Đo dung lượng file
+- Dùng fetch(uri) -> blob() -> blob.size.
+- Có try/catch.
+- Nếu không đọc được size thì không crash, hiển thị fallback.
+
+### Kết quả before/after thực tế
+- Ảnh gốc: 3456x4608, 9019.0 KB
+- Ảnh nén: 900x1200, 172.2 KB
+
+### App.tsx integration
+- App.tsx thêm SafeAreaProvider bọc root app.
+- App.tsx được refactor thành App + AppContent.
+- AppContent giữ logic restoreSession/auth flow.
+- Khi authenticated, App.tsx có state tạm để render ExpenseListScreen hoặc CameraScreen.
+- Có nút test camera tạm thời để nghiệm thu T-14.1.
+- Chưa cấu hình React Navigation.
+- App.tsx vẫn chỉ là root container tạm thời.
+
+### Kết quả test
+- npx tsc --noEmit pass.
+- npm run start -- --clear pass.
+- Expo Go pass trên thiết bị thật.
+- Camera preview hoạt động.
+- Chụp ảnh hoạt động.
+- Nén ảnh hoạt động.
+- Kết quả before/after hiển thị.
+- Nút Chụp lại hoạt động.
+- Nút Đóng quay lại ExpenseListScreen.
+- Không còn warning CameraView children.
+- Không còn lỗi No safe area value.
+
+### Phạm vi chưa làm
+- Chưa upload snap lên backend.
+- Chưa tạo form gửi snap.
+- Chưa lưu ảnh vào snap API.
+- Chưa gắn ảnh snap với expense.
+- Chưa cấu hình React Navigation.
+- Chưa tạo flow camera chính thức trong app navigation.
+
+### Decision
+- Approved
+
 
 
 
